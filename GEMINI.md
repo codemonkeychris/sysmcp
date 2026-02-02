@@ -2,6 +2,27 @@
 
 This file provides detailed guidance for Google Gemini working on the SysMCP codebase. Reference `.github/copilot-instructions.md` for architecture and `AGENTS.md` for coordination with other AI assistants.
 
+## Feature Development Skills
+
+When working on a new feature, use the three reusable skills in order:
+
+1. **`feature-spec` skill** - Start here with a feature idea
+   - Asks clarifying questions to flesh out the design
+   - Creates specification document
+   - Creates git feature branch
+   
+2. **`feature-plan` skill** - After spec is approved
+   - Researches codebase and architecture
+   - Creates detailed technical implementation plan
+   - Identifies components and dependencies
+   
+3. **`feature-tasks` skill** - Before implementation begins
+   - Breaks down spec and plan into ordered tasks
+   - Creates task checklist with acceptance criteria
+   - Identifies critical path and dependencies
+
+Each skill is documented in `/skills/` directory. Use "Run feature-spec skill" to invoke.
+
 ## Before Starting Any Task
 
 1. **Review AGENTS.md** - Understand coordination requirements across AI models

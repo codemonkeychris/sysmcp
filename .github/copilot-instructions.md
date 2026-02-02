@@ -1,5 +1,23 @@
 # SysMCP Copilot Instructions
 
+## Feature Development Skills
+
+This project uses three reusable skills for structured feature development. Invoke them explicitly when starting a new feature:
+
+- **`feature-spec` skill** - Creates a feature specification by asking clarifying questions
+  - Input: Feature idea or requirement
+  - Output: Specification file + git branch
+  
+- **`feature-plan` skill** - Creates a technical implementation plan from the spec
+  - Input: Feature number or spec file
+  - Output: Technical plan document
+  
+- **`feature-tasks` skill** - Breaks spec and plan into ordered implementation tasks
+  - Input: Feature number or spec/plan files
+  - Output: Tasks checklist + status tracking file
+
+See `/skills/README.md` for complete documentation on using these skills.
+
 ## Project Overview
 
 SysMCP is a user-mode service that hosts multiple MCP (Model Context Protocol) servers to expose system resources including EventLog, file search, registry, and others. The system implements a sophisticated security model with PII filtering for read operations and buffering/consent for write operations. A system tray application provides user control over which MCP services are enabled and their permission levels (read-only with PII locked, read-only with PII exposed, or read-write).

@@ -26,9 +26,11 @@ This codebase is optimized for AI-assisted development using **multiple differen
    - GEMINI.md (specific component patterns)
    - AGENTS.md (this file, coordination rules)
 
-2. **Check for existing code** - Analyze patterns in existing code to inform your approach
-3. **Note any inconsistencies** - If you find contradictions between documentation files, flag them for human review
-4. **Plan updates** - Before starting code changes, identify what documentation needs updating
+2. **For feature development**: Read `/skills/README.md` for skill-based development workflow
+
+3. **Check for existing code** - Analyze patterns in existing code to inform your approach
+4. **Note any inconsistencies** - If you find contradictions between documentation files, flag them for human review
+5. **Plan updates** - Before starting code changes, identify what documentation needs updating
 
 ## Mandatory Documentation Updates
 
