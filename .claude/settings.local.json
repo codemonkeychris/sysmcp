@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:aider.chat)",
+      "WebFetch(domain:www.jetbrains.com)",
+      "WebFetch(domain:docs.cline.bot)",
+      "WebFetch(domain:docs.windsurf.com)",
+      "Bash(ls -la \"C:\\\\Users\\\\chris\\\\Code\\\\SysMCP\\\\.github\"\" && echo \"---\" && ls -la \"C:UserschrisCodeSysMCP\"\")"
+    ]
+  }
+}
