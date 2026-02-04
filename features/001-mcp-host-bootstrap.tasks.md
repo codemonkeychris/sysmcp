@@ -171,35 +171,35 @@ src/config/
 Implement JSON-formatted structured logging with multiple output targets and PII filtering.
 
 **Acceptance Criteria**:
-- [ ] `src/logger/index.ts` created with logger factory
-- [ ] `src/logger/types.ts` defines Logger, LogEntry, LogContext interfaces
-- [ ] `src/logger/formatters.ts` implements JSON formatting and PII filtering
-- [ ] Logger outputs valid JSON format with all required fields
-- [ ] Every log entry includes:
+- [x] `src/logger/index.ts` created with logger factory
+- [x] `src/logger/types.ts` defines Logger, LogEntry, LogContext interfaces
+- [x] `src/logger/formatters.ts` implements JSON formatting and PII filtering
+- [x] Logger outputs valid JSON format with all required fields
+- [x] Every log entry includes:
   - `timestamp` (ISO 8601 format)
   - `level` (error, warn, info, debug)
   - `service` (component name)
   - `message` (main message)
   - `context` (optional JSON object)
   - `stack` (for errors, in debug mode only)
-- [ ] Log levels respected: only log messages at or above configured level
-- [ ] Output to stdout by default
-- [ ] Optional file output if `LOG_FILE` environment variable set
-- [ ] Child loggers maintain context across calls
-- [ ] PII filtering removes/masks:
+- [x] Log levels respected: only log messages at or above configured level
+- [x] Output to stdout by default
+- [x] Optional file output if `LOG_FILE` environment variable set
+- [x] Child loggers maintain context across calls
+- [x] PII filtering removes/masks:
   - Passwords, tokens, secrets, credentials
   - Email addresses (show domain only)
   - Phone numbers (show last 4 digits only)
   - Full names (show first character only)
   - SSNs, API keys
-- [ ] Performance: <1ms per log entry (no synchronous file writes)
-- [ ] Unit tests cover:
+- [x] Performance: <1ms per log entry (no synchronous file writes)
+- [x] Unit tests cover:
   - JSON format validation
   - All log levels
   - Child logger context
   - PII filtering for all patterns
   - File output (if LOG_FILE set)
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Use `pino` or `winston` as underlying logger
@@ -230,29 +230,29 @@ src/logger/
 Implement the in-memory service registry that stores and manages service instances with state tracking.
 
 **Acceptance Criteria**:
-- [ ] `src/services/registry.ts` created with registry factory
-- [ ] `src/services/types.ts` defines Service, ServiceConfig, ServiceState types
-- [ ] Registry stores services in memory (Map-based for O(1) lookups)
-- [ ] Service states implemented: disabled, starting, ready, error, stopping
-- [ ] `register(config)` adds new service (starts in DISABLED state)
-- [ ] `get(name)` retrieves service by name
-- [ ] `getAll()` returns all services
-- [ ] `updateState(name, state)` updates service state with validation
-- [ ] `exists(name)` checks if service registered
-- [ ] `remove(name)` removes service from registry
-- [ ] Services track:
+- [x] `src/services/registry.ts` created with registry factory
+- [x] `src/services/types.ts` defines Service, ServiceConfig, ServiceState types
+- [x] Registry stores services in memory (Map-based for O(1) lookups)
+- [x] Service states implemented: disabled, starting, ready, error, stopping
+- [x] `register(config)` adds new service (starts in DISABLED state)
+- [x] `get(name)` retrieves service by name
+- [x] `getAll()` returns all services
+- [x] `updateState(name, state)` updates service state with validation
+- [x] `exists(name)` checks if service registered
+- [x] `remove(name)` removes service from registry
+- [x] Services track:
   - `name`, `type`, `config`, `requiredPermissions`
   - `state`, `errorMessage`, `startedAt`
-- [ ] State transitions validated (e.g., can't go READY → STARTING)
-- [ ] Timestamp set when transitioning to READY
-- [ ] Error messages stored for failed services
-- [ ] Thread-safe if concurrent access expected
-- [ ] Unit tests cover:
+- [x] State transitions validated (e.g., can't go READY → STARTING)
+- [x] Timestamp set when transitioning to READY
+- [x] Error messages stored for failed services
+- [x] Thread-safe if concurrent access expected
+- [x] Unit tests cover:
   - Register and retrieve services
   - State transitions
   - Error handling
   - State validation
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Use Map<string, Service> for storage
@@ -283,8 +283,8 @@ src/services/
 Implement service start, stop, and restart operations with retry logic, timeouts, and error handling.
 
 **Acceptance Criteria**:
-- [ ] `src/services/lifecycle.ts` created with lifecycle manager factory
-- [ ] `startService(name)` method:
+- [x] `src/services/lifecycle.ts` created with lifecycle manager factory
+- [x] `startService(name)` method:
   - Validates service exists
   - Checks not already running
   - Sets state to STARTING
@@ -294,28 +294,28 @@ Implement service start, stop, and restart operations with retry logic, timeouts
   - On failure: retries up to 3 times (exponential backoff: 1s, 2s, 4s)
   - Final failure: transitions to ERROR with message
   - Returns Promise that resolves when operation completes
-- [ ] `stopService(name)` method:
+- [x] `stopService(name)` method:
   - Validates service exists
   - Sets state to STOPPING
   - Executes service cleanup (placeholder for now)
   - Times out after 10 seconds
   - Transitions to DISABLED
   - Returns Promise that resolves when operation completes
-- [ ] `restartService(name)` method:
+- [x] `restartService(name)` method:
   - Calls stopService followed by startService
   - Maintains error handling throughout
   - Returns Promise that resolves when operation completes
-- [ ] `isServiceHealthy(name)` method returns boolean
-- [ ] Error handling:
+- [x] `isServiceHealthy(name)` method returns boolean
+- [x] Error handling:
   - All errors caught and logged
   - Errors don't crash host
   - Clear error messages stored
   - Stack traces logged in debug mode
-- [ ] Logging:
+- [x] Logging:
   - Service lifecycle events logged (start, stop, restart, error)
   - Retry attempts logged
   - Timeouts logged
-- [ ] Unit tests cover:
+- [x] Unit tests cover:
   - Successful service start
   - Start with retries
   - Start timeout
@@ -323,7 +323,7 @@ Implement service start, stop, and restart operations with retry logic, timeouts
   - Service stop
   - Service restart
   - Error handling
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Use Promise-based async/await
@@ -354,37 +354,37 @@ src/services/
 Set up Express HTTP server with graceful shutdown and basic health check endpoint.
 
 **Acceptance Criteria**:
-- [ ] `src/server.ts` created with server factory
-- [ ] Express app created with middleware:
+- [x] `src/server.ts` created with server factory
+- [x] Express app created with middleware:
   - JSON body parser
   - Error handling middleware
   - Request logging middleware (using structured logger)
-- [ ] `/health` endpoint implemented:
+- [x] `/health` endpoint implemented:
   - Returns JSON: `{ status: string, uptime: number, services: number }`
   - Status is "ok" or "degraded" (if any service in ERROR state)
   - Uptime in seconds since server start
   - Services count is number of registered services
   - Accessible via GET request
-- [ ] Server listens on configured PORT (default 3000)
-- [ ] Server starts within 2 seconds (excluding Node startup)
-- [ ] Graceful shutdown implemented:
+- [x] Server listens on configured PORT (default 3000)
+- [x] Server starts within 2 seconds (excluding Node startup)
+- [x] Graceful shutdown implemented:
   - Listens for SIGTERM and SIGINT signals
   - Closes HTTP server
   - Drains in-flight requests (5-second timeout)
   - Logs shutdown sequence
-- [ ] Error handling middleware catches all errors
-- [ ] 404 errors handled gracefully
-- [ ] Configuration applied (PORT, timeout)
-- [ ] Logging:
+- [x] Error handling middleware catches all errors
+- [x] 404 errors handled gracefully
+- [x] Configuration applied (PORT, timeout)
+- [x] Logging:
   - Server startup logged with port and mode
   - Request summary logged (method, path, status, duration)
   - Shutdown sequence logged
-- [ ] Integration tests cover:
+- [x] Integration tests cover:
   - Server starts and listens
   - Health endpoint returns correct format
   - Graceful shutdown works
   - Error handling catches exceptions
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Use Express.js as specified
@@ -414,10 +414,10 @@ src/
 Implement GraphQL schema with Query and Mutation types for service management.
 
 **Acceptance Criteria**:
-- [ ] `src/graphql/schema.ts` created with GraphQL type definitions
-- [ ] `src/graphql/resolvers.ts` created with resolver implementations
-- [ ] `src/graphql/types.ts` created with TypeScript type definitions
-- [ ] GraphQL Schema includes:
+- [x] `src/graphql/schema.ts` created with GraphQL type definitions
+- [x] `src/graphql/resolvers.ts` created with resolver implementations
+- [x] `src/graphql/types.ts` created with TypeScript type definitions
+- [x] GraphQL Schema includes:
   - **Query**:
     - `services: [Service!]!` - returns all registered services
     - `service(name: String!): Service` - returns specific service or null
@@ -433,30 +433,30 @@ Implement GraphQL schema with Query and Mutation types for service management.
     - `HealthStatus { status, uptime, services }`
     - `ServiceRegistrationResult { success, service, error }`
     - `ServiceOperationResult { success, service, error }`
-- [ ] Apollo Server 4.x integrated with Express
-- [ ] Resolvers implement actual logic:
+- [x] Apollo Server 4.x integrated with Express
+- [x] Resolvers implement actual logic:
   - Query.services and Query.service delegate to registry
   - Query.health calculates current health
   - Mutations delegate to lifecycle manager
-- [ ] Error handling:
+- [x] Error handling:
   - Resolvers catch errors and return GraphQL errors
   - No stack traces exposed in production
   - Debug mode includes stack traces
-- [ ] Introspection enabled in development, disabled in production (based on config)
-- [ ] Query complexity analysis implemented (MAX_QUERY_DEPTH config)
-- [ ] GraphQL endpoint at `/graphql` path
-- [ ] Apollo Server configured with:
+- [x] Introspection enabled in development, disabled in production (based on config)
+- [x] Query complexity analysis implemented (MAX_QUERY_DEPTH config)
+- [x] GraphQL endpoint at `/graphql` path
+- [x] Apollo Server configured with:
   - Proper error formatting
   - Request logging (via structured logger)
   - Query complexity validation
-- [ ] Integration tests cover:
+- [x] Integration tests cover:
   - All Query types
   - All Mutation types
   - Error cases
   - Introspection enabled/disabled
   - Query depth limits enforced
   - Response format validation
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Use GraphQL SDL (Schema Definition Language)
@@ -487,39 +487,39 @@ src/graphql/
 Implement file system watcher that triggers service restarts on code changes (development mode only).
 
 **Acceptance Criteria**:
-- [ ] `src/watcher.ts` created with watcher factory
-- [ ] Watcher only enabled when `NODE_ENV != 'production'` (based on config)
-- [ ] Watches all files in `/src` directory recursively
-- [ ] Watches configuration files: `.env`, `config/*.yml`, `config/*.json`
-- [ ] Explicitly ignores:
+- [x] `src/watcher.ts` created with watcher factory
+- [x] Watcher only enabled when `NODE_ENV != 'production'` (based on config)
+- [x] Watches all files in `/src` directory recursively
+- [x] Watches configuration files: `.env`, `config/*.yml`, `config/*.json`
+- [x] Explicitly ignores:
   - `node_modules/`
   - `dist/`, `build/`, `coverage/`
   - `.git/`
   - `*.test.ts`, `*.spec.ts`
   - Log files
-- [ ] On file change detected:
+- [x] On file change detected:
   - Logs file change event (with filename)
   - Debounces multiple changes within 500ms
   - Calls `restartService()` on all services
   - Logs restart completion
-- [ ] Restart cascade prevention:
+- [x] Restart cascade prevention:
   - Ignores file changes triggered during restart for 2 seconds
   - No cascading restarts
-- [ ] Error handling:
+- [x] Error handling:
   - Watcher errors don't crash host
   - Watcher errors logged
-- [ ] Watcher can be stopped gracefully (for shutdown)
-- [ ] Performance:
+- [x] Watcher can be stopped gracefully (for shutdown)
+- [x] Performance:
   - File change detection < 500ms (debounced)
   - No excessive CPU usage
   - Minimal memory footprint
-- [ ] Unit tests cover:
+- [x] Unit tests cover:
   - File change detection
   - Debouncing multiple changes
   - Ignored file patterns
   - Cascade prevention
   - Error handling
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Use `chokidar` as specified
@@ -548,8 +548,8 @@ src/
 Implement the main entry point that orchestrates startup of all components in correct order.
 
 **Acceptance Criteria**:
-- [ ] `src/index.ts` created as entry point
-- [ ] Startup sequence implemented in order:
+- [x] `src/index.ts` created as entry point
+- [x] Startup sequence implemented in order:
   1. Load environment variables from `.env`
   2. Create configuration
   3. Validate configuration (exit with error if invalid)
@@ -562,33 +562,33 @@ Implement the main entry point that orchestrates startup of all components in co
   10. Start file watcher (if development mode)
   11. Start listening on configured port
   12. Log successful startup with port and mode
-- [ ] Graceful error handling:
+- [x] Graceful error handling:
   - Configuration errors show clear message
   - Server startup errors show clear message
   - Process exits with code 1 on startup failure
-- [ ] Logging:
+- [x] Logging:
   - Each startup step logged at appropriate level
   - Startup completion logged with timestamp
   - Mode (development/production) logged
   - Port number logged
-- [ ] Global error handlers:
+- [x] Global error handlers:
   - Uncaught exception handler logs and exits
   - Unhandled promise rejection handler logs
-- [ ] Process signal handlers:
+- [x] Process signal handlers:
   - SIGTERM triggers graceful shutdown
   - SIGINT triggers graceful shutdown
-- [ ] npm scripts functional:
+- [x] npm scripts functional:
   - `npm start` - production mode
   - `npm run dev` - development mode with file watcher
   - `npm run build` - compiles TypeScript
   - `npm test` - runs all tests
   - `npm run lint` - lints code
-- [ ] Integration tests cover:
+- [x] Integration tests cover:
   - Full startup sequence
   - Configuration validation failures
   - Server startup failures
   - Graceful shutdown
-- [ ] Test coverage >80%
+- [x] Test coverage >80%
 
 **Implementation Notes**:
 - Separate production and development startup scripts (or use NODE_ENV)
@@ -618,14 +618,14 @@ src/
 Implement comprehensive integration tests that validate end-to-end functionality.
 
 **Acceptance Criteria**:
-- [ ] `tests/integration/` directory created
-- [ ] **Startup Tests** (`startup.test.ts`):
+- [x] `tests/integration/` directory created
+- [x] **Startup Tests** (`startup.test.ts`):
   - Server starts successfully
   - All components initialized in correct order
   - Health endpoint available after startup
   - GraphQL endpoint available after startup
   - Service registry accessible
-- [ ] **GraphQL Tests** (`graphql.test.ts`):
+- [x] **GraphQL Tests** (`graphql.test.ts`):
   - Query.services returns all registered services
   - Query.service returns specific service or null
   - Query.health returns correct status
@@ -635,32 +635,32 @@ Implement comprehensive integration tests that validate end-to-end functionality
   - Mutation.restartService restarts service
   - Error queries return appropriate GraphQL errors
   - Introspection query works in development, fails in production
-- [ ] **File Watcher Tests** (`file-watcher.test.ts`):
+- [x] **File Watcher Tests** (`file-watcher.test.ts`):
   - File change detected and logged
   - Multiple changes debounced into single restart
   - Ignored files don't trigger restart
   - Cascade prevention works (2-second window)
   - Watcher stops gracefully
-- [ ] **Error Handling Tests**:
+- [x] **Error Handling Tests**:
   - Service start timeout handled
   - Service start failure with retries
   - Service start final failure transitions to ERROR
   - Service errors don't crash host
   - Graceful shutdown with in-flight requests
-- [ ] **Performance Tests**:
+- [x] **Performance Tests**:
   - Server startup < 2 seconds
   - GraphQL queries < 100ms
   - File watcher detection < 500ms
   - Memory usage < 100MB at startup
-- [ ] **Configuration Tests**:
+- [x] **Configuration Tests**:
   - All environment variables respected
   - `.env` file loaded correctly
   - Configuration validation works
   - Defaults applied correctly
-- [ ] All tests pass
-- [ ] Test coverage >80% across codebase
-- [ ] Tests run with `npm test` command
-- [ ] Tests run in CI/CD (if configured)
+- [x] All tests pass
+- [x] Test coverage >80% across codebase
+- [x] Tests run with `npm test` command
+- [x] Tests run in CI/CD (if configured)
 
 **Implementation Notes**:
 - Use Jest as testing framework (configured in Task 1.1)
@@ -696,7 +696,7 @@ tests/
 Create comprehensive documentation for the MCP Host Bootstrap service.
 
 **Acceptance Criteria**:
-- [ ] `docs/bootstrap-design.md` created with:
+- [x] `docs/bootstrap-design.md` created with:
   - Architecture overview (with diagrams)
   - Component descriptions
   - Data flow diagrams
@@ -704,7 +704,7 @@ Create comprehensive documentation for the MCP Host Bootstrap service.
   - GraphQL API reference (all queries and mutations)
   - Error handling guide
   - Extension points for future features
-- [ ] `README.md` updated or created with:
+- [x] `README.md` updated or created with:
   - Project overview
   - Quick start guide (development mode)
   - Installation instructions
@@ -713,10 +713,10 @@ Create comprehensive documentation for the MCP Host Bootstrap service.
   - Configuration options
   - Environment variables reference
   - Troubleshooting common issues
-- [ ] GraphQL schema documented with descriptions
-- [ ] API examples provided for common operations
-- [ ] Performance characteristics documented
-- [ ] Development workflow documented
+- [x] GraphQL schema documented with descriptions
+- [x] API examples provided for common operations
+- [x] Performance characteristics documented
+- [x] Development workflow documented
 
 **Implementation Notes**:
 - Use clear, concise language
@@ -747,16 +747,16 @@ README.md (updated)
 Add comprehensive JSDoc comments to all public APIs and exported functions.
 
 **Acceptance Criteria**:
-- [ ] All exported functions have JSDoc comments with:
+- [x] All exported functions have JSDoc comments with:
   - Description of what the function does
   - `@param` tags for all parameters
   - `@returns` tag describing return value
   - `@throws` tag for exceptions (if applicable)
   - `@example` tags for complex functions
-- [ ] All exported types/interfaces documented with comments
-- [ ] All exported constants have comments
-- [ ] No spelling errors in documentation
-- [ ] Documentation matches actual implementation
+- [x] All exported types/interfaces documented with comments
+- [x] All exported constants have comments
+- [x] No spelling errors in documentation
+- [x] Documentation matches actual implementation
 
 **Implementation Notes**:
 - JSDoc format: `/** ... */`
@@ -779,16 +779,16 @@ Add comprehensive JSDoc comments to all public APIs and exported functions.
 Review code against quality standards and fix any issues.
 
 **Acceptance Criteria**:
-- [ ] All linting passes: `npm run lint` shows no errors
-- [ ] Code formatted consistently: `npm run format` shows no changes
-- [ ] No hardcoded secrets or credentials
-- [ ] No console.log() calls (use logger instead)
-- [ ] All TODO/FIXME comments addressed or documented
-- [ ] No dead code or unused imports
-- [ ] Error handling consistent throughout
-- [ ] Variable naming clear and consistent
-- [ ] File sizes reasonable (< 300 lines per file)
-- [ ] Cyclomatic complexity within limits
+- [x] All linting passes: `npm run lint` shows no errors
+- [x] Code formatted consistently: `npm run format` shows no changes
+- [x] No hardcoded secrets or credentials
+- [x] No console.log() calls (use logger instead)
+- [x] All TODO/FIXME comments addressed or documented
+- [x] No dead code or unused imports
+- [x] Error handling consistent throughout
+- [x] Variable naming clear and consistent
+- [x] File sizes reasonable (< 300 lines per file)
+- [x] Cyclomatic complexity within limits
 
 **Implementation Notes**:
 - Run `npm run lint` and address all issues
@@ -808,13 +808,13 @@ Review code against quality standards and fix any issues.
 Validate that the service meets all performance requirements.
 
 **Acceptance Criteria**:
-- [ ] Server startup time < 2 seconds (measure with `time npm start`)
-- [ ] GraphQL query response time < 100ms (measure with sample queries)
-- [ ] File watcher detects changes < 500ms (test with file modification)
-- [ ] Memory usage at startup < 100MB (check with `node --max-old-space-size`)
-- [ ] Graceful shutdown completes within reasonable time
-- [ ] No memory leaks after extended operation (monitor with heap snapshots)
-- [ ] All performance tests passing
+- [x] Server startup time < 2 seconds (measure with `time npm start`)
+- [x] GraphQL query response time < 100ms (measure with sample queries)
+- [x] File watcher detects changes < 500ms (test with file modification)
+- [x] Memory usage at startup < 100MB (check with `node --max-old-space-size`)
+- [x] Graceful shutdown completes within reasonable time
+- [x] No memory leaks after extended operation (monitor with heap snapshots)
+- [x] All performance tests passing
 
 **Implementation Notes**:
 - Use Node.js built-in profiling tools
@@ -834,19 +834,19 @@ Validate that the service meets all performance requirements.
 Perform manual smoke testing to verify all features work as expected.
 
 **Acceptance Criteria**:
-- [ ] Server starts and listens on port 3000: `npm run dev`
-- [ ] Health endpoint responds: `curl http://localhost:3000/health`
-- [ ] GraphQL endpoint available: `curl -X POST http://localhost:3000/graphql`
-- [ ] GraphQL introspection works (in development mode)
-- [ ] Services can be registered via GraphQL mutation
-- [ ] Service status can be queried via GraphQL
-- [ ] File change triggers restart (modify file in `/src`)
-- [ ] Logs are valid JSON format (parse with `jq`)
-- [ ] No errors in logs during normal operation
-- [ ] Graceful shutdown works: Ctrl+C
-- [ ] `.env` file is loaded correctly
-- [ ] Configuration validation works (test with invalid config)
-- [ ] Development mode vs. production mode differences verified
+- [x] Server starts and listens on port 3000: `npm run dev`
+- [x] Health endpoint responds: `curl http://localhost:3000/health`
+- [x] GraphQL endpoint available: `curl -X POST http://localhost:3000/graphql`
+- [x] GraphQL introspection works (in development mode)
+- [x] Services can be registered via GraphQL mutation
+- [x] Service status can be queried via GraphQL
+- [x] File change triggers restart (modify file in `/src`)
+- [x] Logs are valid JSON format (parse with `jq`)
+- [x] No errors in logs during normal operation
+- [x] Graceful shutdown works: Ctrl+C
+- [x] `.env` file is loaded correctly
+- [x] Configuration validation works (test with invalid config)
+- [x] Development mode vs. production mode differences verified
 
 **Implementation Notes**:
 - Manual testing checklist
