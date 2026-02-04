@@ -60,6 +60,29 @@ Breaks down a spec and plan into ordered, checklist-able implementation tasks.
 6. Save tasks file to `/features/XXX-feature-name.tasks.md`
 7. Create task tracking file at `/features/XXX-feature-name/status.md` with same checklist
 
+### 4. feature-implement
+Orchestrates the implementation phase: ensures work happens in feature branch, tracks task progress, verifies acceptance criteria.
+
+**Invocation**: `Run feature-implement skill` or `Start feature-implement`
+
+**Input**: Feature number or feature name (e.g., "001" or "001-mcp-host-bootstrap")
+
+**Output**:
+- Validates feature branch is active
+- Displays task checklist and implementation guidance
+- Tracks task completions in status.md
+- Verifies acceptance criteria before closing tasks
+- Updates progress metrics and blocks dependent tasks
+
+**Workflow**:
+1. Validate feature setup (branch active, documentation exists)
+2. Display implementation overview and current status
+3. Guide user through task implementation with acceptance criteria
+4. Track task completion and update status.md
+5. Verify quality gates before marking tasks complete
+6. Update progress metrics and identify next tasks
+7. Maintain feature branch hygiene throughout development
+
 ## Feature Numbering
 
 Features are numbered sequentially: **001, 002, 003, etc.**
@@ -79,17 +102,19 @@ Example: If `003-auth-system` exists, next feature is `004-...`
 ├── 001-feature-name.plan.md       # Technical plan
 ├── 001-feature-name.tasks.md      # Implementation tasks
 └── 001-feature-name/
-    └── status.md                   # Task tracking (copy of tasks.md for status updates)
+    └── status.md                   # Task tracking (updated during implementation)
 \\\
 
 ## Git Workflow
 
-Each feature gets a dedicated branch:
+Each feature gets a dedicated branch for implementation:
 
 \\\
 Branch: feature/001-feature-name
-Spec: spec -> plan -> tasks -> implementation
-Commit: When tasks are complete, submit all feature changes with PR
+Workflow: spec → plan → tasks → implement
+Commits: Task-based with format "✓ Task X.Y: [task name]"
+Status: Track progress in 001-feature-name/status.md
+Merge: When all tasks complete, submit PR for review
 \\\
 
 ## Using Skills Across AI Systems
@@ -99,6 +124,7 @@ Commit: When tasks are complete, submit all feature changes with PR
 copilot run feature-spec skill
 copilot run feature-plan skill
 copilot run feature-tasks skill
+copilot run feature-implement skill
 \\\
 
 ### Claude Code
@@ -106,6 +132,7 @@ copilot run feature-tasks skill
 Run feature-spec skill
 Run feature-plan skill
 Run feature-tasks skill
+Run feature-implement skill
 \\\
 
 ### Gemini CLI
@@ -113,6 +140,7 @@ Run feature-tasks skill
 gemini run feature-spec skill
 gemini run feature-plan skill
 gemini run feature-tasks skill
+gemini run feature-implement skill
 \\\
 
 ## Notes for AI Assistants

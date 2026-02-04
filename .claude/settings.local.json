@@ -6,7 +6,10 @@
       "WebFetch(domain:www.jetbrains.com)",
       "WebFetch(domain:docs.cline.bot)",
       "WebFetch(domain:docs.windsurf.com)",
-      "Bash(ls -la \"C:\\\\Users\\\\chris\\\\Code\\\\SysMCP\\\\.github\"\" && echo \"---\" && ls -la \"C:UserschrisCodeSysMCP\"\")"
+      "Bash(ls -la \"C:\\\\Users\\\\chris\\\\Code\\\\SysMCP\\\\.github\"\" && echo \"---\" && ls -la \"C:UserschrisCodeSysMCP\"\")",
+      "WebFetch(domain:www.swift.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(dir:*)"
     ]
   }
 }
