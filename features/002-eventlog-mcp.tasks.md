@@ -1,11 +1,11 @@
 # Implementation Tasks: EventLog MCP (Feature 002)
 
 **Feature**: 002-eventlog-mcp  
-**Status**: 35.7% Complete (10/28 tasks) - Phase 0 Done, Phase 1 In Progress  
+**Status**: 39.3% Complete (11/28 tasks) - Phase 0 Done, Phase 1 In Progress  
 **Created**: 2026-02-03  
 **Git Branch**: feature/002-eventlog-mcp  
 **Last Updated**: 2026-02-08  
-**Progress**: Phase 0 (8/8 ✅) | Phase 1 (2/4 🔄) | Phase 2-5 (0/16)
+**Progress**: Phase 0 (8/8 ✅) | Phase 1 (3/4 🔄) | Phase 2-5 (0/16)
 
 ---
 
@@ -378,28 +378,35 @@ Integrating the library with SysMCP and implementing GraphQL types.
 
 ### GraphQL Integration (2 tasks)
 
-#### Task 1.2: Extend GraphQL Schema for EventLog
+#### Task 1.2: Extend GraphQL Schema for EventLog ✅ COMPLETE
 - **Description**: Add EventLog types and query to GraphQL schema
 - **Acceptance Criteria**:
-  - [ ] File modified: `/src/graphql/schema.ts` (or new `/src/graphql/eventlog.schema.ts` if modular)
-  - [ ] Add GraphQL type definitions:
+  - [x] File modified: `/src/graphql/schema.ts` (extended existing schema)
+  - [x] Add GraphQL type definitions:
     - `enum EventLevel { ERROR WARNING INFO VERBOSE DEBUG }`
     - `type EventLogEntry` (id, timestamp, level, source, eventId, username, computername, message)
     - `type PageInfo` (hasNextPage, hasPreviousPage, startCursor, endCursor)
     - `type EventLogQueryMetrics` (queryCount, responseDurationMs, resultsReturned)
     - `type EventLogResult` (entries, pageInfo, totalCount, metrics)
-  - [ ] Add to Query type:
+  - [x] Add to Query type:
     - `eventLogs(limit, offset, logName, minLevel, source, startTime, endTime, messageContains): EventLogResult!`
-    - All parameters have descriptions
+    - All parameters have descriptions (inline in schema with """ comments)
     - Defaults documented (limit=1000, offset=0)
-  - [ ] Schema validates with Apollo GraphQL tools
-  - [ ] Schema can be published to GraphQL playground
+  - [x] Schema validates with Apollo GraphQL tools (tested in schema.test.ts)
+  - [x] Schema can be published to GraphQL playground (verified by buildSchema)
 - **Test Requirements**:
-  - [ ] Schema compilation succeeds
-  - [ ] GraphQL schema introspection returns correct types
-  - [ ] Test GraphQL schema validation
-- **Effort**: S (1 day)
-- **Dependencies**: Task 1.1 (type definitions)
+  - [x] Schema compilation succeeds (19 test cases verify this)
+  - [x] GraphQL schema introspection returns correct types (type validation tests)
+  - [x] Test GraphQL schema validation (comprehensive schema tests)
+- **Effort**: S (1 day) - Completed in 1 session
+- **Dependencies**: Task 1.1 (type definitions) ✅
+- **Status**: ✅ COMPLETE
+- **Notes**:
+  - Extended existing schema.ts with 5 new types + 1 new Query field
+  - All types fully documented with GraphQL descriptions
+  - Query parameters include defaults and descriptions
+  - 19 comprehensive unit tests verify schema validity
+  - Ready for Task 1.3 (GraphQL Resolver)
 
 #### Task 1.3: Implement eventLogs GraphQL Resolver
 - **Description**: Implement resolver for eventLogs query
