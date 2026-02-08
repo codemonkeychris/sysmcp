@@ -5,13 +5,13 @@
  * Provides lifecycle management, logging, metrics, and error handling.
  */
 
-import { Logger } from '../logger/types';
+import { Logger } from '../../logger/types';
 import { 
   WindowsEventLogLibrary,
   WindowsEventLogLibraryOptions,
   EventLogQuery,
   QueryResult
-} from '../services/eventlog/lib/src/windows-eventlog-lib';
+} from './lib/src/windows-eventlog-lib';
 
 /**
  * Service provider exception types

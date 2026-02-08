@@ -2,18 +2,17 @@
  * EventLog GraphQL Resolver
  *
  * Implements the eventLogs query resolver for querying Windows Event Logs via GraphQL.
- * Handles input validation, service availability checks, error handling, and metrics collection.
+ * Handles input validation, service availability checks, error handling, metrics collection,
+ * and PII anonymization.
  */
 
 import { Logger } from '../logger/types';
 import { EventLogProvider } from '../services/eventlog/provider';
 import {
   EventLogResult,
-  EventLogEntry,
-  EventLevel,
-  PageInfo,
-  EventLogQueryMetrics
+  EventLevel
 } from '../services/eventlog/types';
+import { PiiAnonymizer } from '../services/eventlog/lib/src/anonymizer';
 
 /**
  * Arguments for the eventLogs GraphQL query
@@ -35,6 +34,8 @@ interface EventLogsArgs {
 interface ResolverContext {
   logger: Logger;
   eventlogProvider?: EventLogProvider;
+  eventlogAnonymizer?: PiiAnonymizer;
+  eventlogMappingPath?: string;
 }
 
 /**
@@ -112,11 +113,11 @@ function validateArgs(args: EventLogsArgs): void {
 /**
  * EventLogs query resolver
  *
- * Queries Windows event logs with filtering and pagination.
+ * Queries Windows event logs with filtering, pagination, and PII anonymization.
  *
  * @param parent - Parent value (unused for Query root)
  * @param args - Query arguments (limit, offset, logName, filters)
- * @param context - GraphQL context with logger and provider
+ * @param context - GraphQL context with logger, provider, and anonymizer
  * @returns Promise resolving to EventLogResult
  * @throws GraphQL error if validation fails or service unavailable
  */
@@ -164,21 +165,59 @@ export async function eventLogsResolver(
       }
     });
 
+    // Initialize anonymizer if needed
+    let anonymizer = context.eventlogAnonymizer;
+    if (!anonymizer) {
+      // Try to load persisted mapping if path provided
+      if (context.eventlogMappingPath) {
+        try {
+          const mapping = await PiiAnonymizer.loadMapping(context.eventlogMappingPath);
+          anonymizer = new PiiAnonymizer(mapping);
+          logger.debug('Loaded persisted anonymization mapping');
+        } catch (error) {
+          // If mapping doesn't exist or is corrupt, start fresh
+          logger.debug('Starting with fresh anonymization mapping');
+          anonymizer = new PiiAnonymizer();
+        }
+      } else {
+        anonymizer = new PiiAnonymizer();
+      }
+    }
+
+    // Apply anonymization to all entries
+    const anonymizedEntries = result.entries.map((entry: any) => {
+      const anonEntry = anonymizer!.anonymizeEntry(entry);
+      return {
+        id: anonEntry.id ?? 0,
+        timestamp: anonEntry.timeCreated || anonEntry.timestamp || new Date(),
+        level: (anonEntry.levelDisplayName || anonEntry.level || 'INFO').toUpperCase() as EventLevel,
+        source: anonEntry.providerName || anonEntry.source || 'Unknown',
+        eventId: anonEntry.eventId ?? 0,
+        username: anonEntry.userId || anonEntry.username,
+        computername: anonEntry.computerName || anonEntry.computername,
+        message: anonEntry.message || ''
+      } as EventLogResult['entries'][number];
+    });
+
+    // Persist anonymization mapping if path provided
+    if (context.eventlogMappingPath && anonymizer) {
+      try {
+        await anonymizer.persistMapping(context.eventlogMappingPath);
+        logger.debug('Persisted anonymization mapping');
+      } catch (error) {
+        // Log persistence error but don't fail the query
+        logger.warn('Failed to persist anonymization mapping', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
     // Calculate metrics
     const responseDurationMs = Date.now() - startTime;
 
     // Convert library result to GraphQL result
     const gqlResult: EventLogResult = {
-      entries: result.entries.map((entry: any) => ({
-        id: entry.id,
-        timestamp: entry.timeCreated || entry.timestamp,
-        level: (entry.levelDisplayName || entry.level || 'INFO').toUpperCase() as EventLevel,
-        source: entry.providerName || entry.source || 'Unknown',
-        eventId: entry.eventId,
-        username: entry.userId || entry.username,
-        computername: entry.computerName || entry.computername,
-        message: entry.message
-      })),
+      entries: anonymizedEntries,
       pageInfo: {
         hasNextPage: result.hasMore ?? false,
         hasPreviousPage: offset > 0,
@@ -198,7 +237,8 @@ export async function eventLogsResolver(
       logName: args.logName,
       resultCount: gqlResult.entries.length,
       totalCount: gqlResult.totalCount,
-      durationMs: responseDurationMs
+      durationMs: responseDurationMs,
+      anonymized: true
     });
 
     return gqlResult;
