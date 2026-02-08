@@ -7,7 +7,7 @@ import {
   PermissionDeniedException,
   ValidationException
 } from '../provider';
-import { Logger } from '../../logger/types';
+import { Logger } from '../../../logger/types';
 
 // Mock logger
 const createMockLogger = (): Logger => ({
