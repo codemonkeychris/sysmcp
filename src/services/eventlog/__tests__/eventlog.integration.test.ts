@@ -4,9 +4,9 @@
  * End-to-end tests from GraphQL query through provider, anonymization, to response
  */
 
-import { eventLogsResolver } from '../../eventlog.resolver';
-import { EventLogProvider } from '../../services/eventlog/provider';
-import { Logger } from '../../logger/types';
+import { eventLogsResolver } from '../../../graphql/eventlog.resolver';
+import { EventLogProvider } from '../provider';
+import { Logger } from '../../../logger/types';
 import * as fs from 'fs';
 import * as path from 'path';
 

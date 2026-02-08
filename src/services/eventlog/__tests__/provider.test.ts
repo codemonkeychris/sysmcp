@@ -5,8 +5,7 @@
 import {
   EventLogProvider,
   PermissionDeniedException,
-  ValidationException,
-  OperationFailedException
+  ValidationException
 } from '../provider';
 import { Logger } from '../../logger/types';
 

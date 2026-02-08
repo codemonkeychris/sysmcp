@@ -14,7 +14,7 @@
  */
 
 import { spawn } from 'child_process';
-import { promisify } from 'util';
+// import { promisify } from 'util';
 
 interface WindowsEvent {
   Id: number;
@@ -102,7 +102,7 @@ async function queryEventLog(options: QueryOptions): Promise<QueryResult> {
     }
   `.trim();
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psCommand], {
       stdio: ['pipe', 'pipe', 'pipe'],
     });

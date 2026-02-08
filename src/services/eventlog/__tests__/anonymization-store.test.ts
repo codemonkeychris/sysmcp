@@ -250,7 +250,7 @@ describe('AnonymizationStore', () => {
       };
 
       // Start both saves simultaneously
-      const [result1, result2] = await Promise.all([
+      await Promise.all([
         store.save(mapping1),
         store.save(mapping2)
       ]);

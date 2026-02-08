@@ -28,7 +28,6 @@
 import { 
   EventLogLibrary, 
   EventLogQueryOptions, 
-  EventLogResult, 
   EventLogEntry 
 } from './index';
 import { 

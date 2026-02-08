@@ -4,9 +4,9 @@
  * Comprehensive security tests ensuring no PII leaks in EventLog queries
  */
 
-import { eventLogsResolver } from '../../eventlog.resolver';
-import { EventLogProvider } from '../../services/eventlog/provider';
-import { Logger } from '../../logger/types';
+import { eventLogsResolver } from '../../../graphql/eventlog.resolver';
+import { EventLogProvider } from '../provider';
+import { Logger } from '../../../logger/types';
 
 /**
  * PII Test Case

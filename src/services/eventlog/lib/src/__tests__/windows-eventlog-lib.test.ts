@@ -6,9 +6,7 @@
 
 import { 
   WindowsEventLogLibrary,
-  WindowsEventLogLibraryOptions,
-  EventLogQuery,
-  QueryResult
+  EventLogQuery
 } from '../windows-eventlog-lib';
 
 describe('WindowsEventLogLibrary', () => {

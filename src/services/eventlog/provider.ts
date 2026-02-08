@@ -285,7 +285,8 @@ export class EventLogProvider {
       // Update metrics
       this.metrics.queriesExecuted++;
       this.metrics.totalResultsReturned += result.entries.length;
-      this.metrics.totalExecutionTimeMs += result.executionTimeMs;
+      const executionTime = result.executionTimeMs || (Date.now() - startTime);
+      this.metrics.totalExecutionTimeMs += executionTime;
       this.metrics.averageExecutionTimeMs = 
         this.metrics.totalExecutionTimeMs / this.metrics.queriesExecuted;
 
@@ -294,14 +295,14 @@ export class EventLogProvider {
         this.logger.info('EventLog query completed', {
           logName: query.logName,
           resultCount: result.entries.length,
-          executionTimeMs: result.executionTimeMs,
+          executionTimeMs: executionTime,
           hasMore: result.hasMore
         });
       } else {
         this.logger.warn('EventLog query failed', {
           logName: query.logName,
           error: result.errorMessage,
-          executionTimeMs: result.executionTimeMs
+          executionTimeMs: executionTime
         });
         this.metrics.queriesFailed++;
       }
@@ -309,7 +310,7 @@ export class EventLogProvider {
       // Return result with timing
       return {
         ...result,
-        executionTimeMs: result.executionTimeMs,
+        executionTimeMs: executionTime,
         queriedAt: new Date()
       };
     } catch (error) {

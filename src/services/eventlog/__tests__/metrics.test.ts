@@ -5,7 +5,7 @@
  * Tests: recording, retrieval, reset, export, and performance.
  */
 
-import { EventLogMetricsCollector, MetricsSnapshot, MetricsReport } from '../metrics';
+import { EventLogMetricsCollector } from '../metrics';
 
 describe('EventLogMetricsCollector', () => {
   let collector: EventLogMetricsCollector;

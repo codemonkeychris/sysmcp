@@ -250,7 +250,7 @@ export class EventLogConfigManager {
     if (!validLevels.includes(level)) {
       throw new Error(`Invalid log level: ${level}`);
     }
-    this.config.logLevel = level;
+    this.config.logLevel = level as 'debug' | 'info' | 'warn' | 'error';
     // FUTURE: Persist to storage
   }
 

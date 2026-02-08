@@ -389,7 +389,7 @@ export class PiiAnonymizer {
    */
   private anonymizeFilePaths(value: string): string {
     // Match C:\Users\username or similar user profile paths
-    return value.replace(/C:\\Users\\([A-Za-z0-9._-]+)/gi, (match, username) => {
+    return value.replace(/C:\\Users\\([A-Za-z0-9._-]+)/gi, (_match, username) => {
       const token = this.getOrCreateToken(username, 'usernames', 'ANON_USER');
       return `C:\\Users\\${token}`;
     });
