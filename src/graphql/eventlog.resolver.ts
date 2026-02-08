@@ -14,6 +14,7 @@ import {
   EventLevel
 } from '../services/eventlog/types';
 import { PiiAnonymizer } from '../services/eventlog/lib/src/anonymizer';
+import { EventLogMetricsCollector } from '../services/eventlog/metrics';
 import { encodeCursor, decodeCursor, isValidCursor, CursorPosition } from './cursor';
 
 /**
@@ -84,6 +85,7 @@ interface ResolverContext {
   eventlogProvider?: EventLogProvider;
   eventlogAnonymizer?: PiiAnonymizer;
   eventlogMappingPath?: string;
+  eventlogMetricsCollector?: EventLogMetricsCollector;
 }
 
 /**
@@ -304,6 +306,11 @@ export async function eventLogsResolver(
     // Calculate metrics
     const responseDurationMs = Date.now() - startTime;
 
+    // Record in metrics collector if available
+    if (context.eventlogMetricsCollector) {
+      context.eventlogMetricsCollector.recordQuery(responseDurationMs, anonymizedEntries.length, false);
+    }
+
     // Generate cursors for pagination if entries exist
     let nextPageCursor: string | undefined;
     let previousPageCursor: string | undefined;
@@ -330,6 +337,9 @@ export async function eventLogsResolver(
       }
     }
 
+    // Get current query count from metrics collector
+    const totalQueryCount = context.eventlogMetricsCollector?.getTotalQueryCount() ?? 0;
+
     // Convert library result to GraphQL result
     const gqlResult: EventLogResult = {
       entries: anonymizedEntries,
@@ -343,7 +353,7 @@ export async function eventLogsResolver(
       },
       totalCount: result.totalCount ?? 0,
       metrics: {
-        queryCount: 1,
+        queryCount: totalQueryCount,
         responseDurationMs,
         resultsReturned: result.entries?.length ?? 0
       }
@@ -362,6 +372,11 @@ export async function eventLogsResolver(
   } catch (error) {
     const durationMs = Date.now() - startTime;
     const errorDetails = error instanceof Error ? error : new Error(String(error));
+
+    // Record failed query in metrics
+    if (context.eventlogMetricsCollector) {
+      context.eventlogMetricsCollector.recordQuery(durationMs, 0, true);
+    }
 
     // Classify and handle specific error types
     if (error instanceof EventLogGraphQLError) {

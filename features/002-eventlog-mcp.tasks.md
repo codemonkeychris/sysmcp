@@ -725,24 +725,30 @@ Metrics collection and service configuration.
 #### Task 4.1: Expose Metrics in GraphQL Response
 - **Description**: Include metrics in eventLogs query response
 - **Acceptance Criteria**:
-  - [ ] Modify resolver: `/src/graphql/resolvers/eventlog.resolver.ts`
-  - [ ] Add metrics to EventLogResult:
-    - queryCount: total queries since service start
-    - responseDurationMs: time to execute this specific query
-    - resultsReturned: number of entries in this response
-  - [ ] Metrics calculated:
-    - queryCount incremented on each resolver call
-    - responseDurationMs measured from resolver entry to response
-    - resultsReturned = length of entries array
-  - [ ] Metrics included in GraphQL response schema
-  - [ ] Verify metrics appear in GraphQL response
+  - [x] Modify resolver: `/src/graphql/eventlog.resolver.ts`
+  - [x] Add metrics to EventLogResult:
+    - [x] queryCount: total queries since service start (cumulative from MetricsCollector)
+    - [x] responseDurationMs: time to execute this specific query
+    - [x] resultsReturned: number of entries in this response
+  - [x] Metrics calculated:
+    - [x] queryCount incremented on each resolver call
+    - [x] responseDurationMs measured from resolver entry to response
+    - [x] resultsReturned = length of entries array
+  - [x] Metrics included in GraphQL response schema (already defined in types)
+  - [x] Verify metrics appear in GraphQL response
+  - [x] Record both successful and failed queries in metrics
 - **Test Requirements**:
-  - [ ] Unit test: metrics included in response
-  - [ ] Integration test: GraphQL query includes metrics
-  - [ ] Verify metrics values are correct
-  - [ ] Test with multiple queries (queryCount increments)
+  - [x] Unit test: metrics included in response (12+ test cases)
+  - [x] Integration test: GraphQL query includes metrics
+  - [x] Verify metrics values are correct
+  - [x] Test with multiple queries (queryCount increments)
+  - [x] Test metrics with empty results
+  - [x] Test metrics without collector provided
+  - [x] Test metrics export and reporting
 - **Effort**: S (1 day)
 - **Dependencies**: Task 4.0 (metrics collector)
+- **Status**: ✅ COMPLETE
+- **Completed**: $(date +%Y-%m-%d)
 
 ---
 
