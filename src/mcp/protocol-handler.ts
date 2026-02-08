@@ -16,6 +16,8 @@ import {
   HandlerRegistry,
   MessageHandler,
   RequestContext,
+  InitializeRequest,
+  InitializeResponse,
 } from './message-types';
 
 /**
@@ -38,6 +40,12 @@ export class ProtocolHandler {
   private handlers: HandlerRegistry = new Map();
   private requestContexts: Map<string | number, RequestContext> = new Map();
   private readline: readline.Interface;
+  private initialized: boolean = false;
+  private serverInfo = {
+    name: 'SysMCP Protocol Handler',
+    version: '1.0.0',
+  };
+  private protocolVersion = '2024-11-05';
 
   constructor(
     private stdin: NodeJS.ReadableStream = process.stdin,
@@ -61,9 +69,63 @@ export class ProtocolHandler {
   }
 
   /**
+   * Get initialization status
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * Set initialization status (called after client sends 'initialized' notification)
+   */
+  setInitialized(value: boolean): void {
+    this.initialized = value;
+  }
+
+  /**
+   * Handle initialize request (before initialization is complete)
+   */
+  private async handleInitialize(
+    params: unknown,
+    _requestId: string | number | null
+  ): Promise<InitializeResponse> {
+    if (!params || typeof params !== 'object') {
+      throw new Error('Initialize requires parameters');
+    }
+
+    const req = params as InitializeRequest;
+
+    // Validate required fields
+    if (!req.clientInfo || typeof req.clientInfo.name !== 'string') {
+      throw new Error('clientInfo.name is required');
+    }
+
+    if (!req.protocolVersion || typeof req.protocolVersion !== 'string') {
+      throw new Error('protocolVersion is required');
+    }
+
+    // Return capabilities
+    const response: InitializeResponse = {
+      protocolVersion: this.protocolVersion,
+      serverInfo: this.serverInfo,
+      capabilities: {
+        tools: { listChanged: false },
+        resources: { subscribe: false },
+      },
+    };
+
+    return response;
+  }
+
+  /**
    * Start listening for messages
    */
   start(): void {
+    // Register default handlers
+    this.registerHandler('initialize', (params, id) =>
+      this.handleInitialize(params, id)
+    );
+
     this.readline.on('line', (line: string) => {
       this.handleLine(line);
     });
@@ -148,6 +210,19 @@ export class ProtocolHandler {
       return;
     }
 
+    // Check if tools/list or tools/call require initialization
+    const isToolsRequest = method === 'tools/list' || method === 'tools/call';
+
+    // tools/list and tools/call require initialization
+    if (isToolsRequest && !this.initialized) {
+      this.sendError(
+        id,
+        -32002, // Server not initialized (MCP error code)
+        'Server not initialized. Call initialize first.'
+      );
+      return;
+    }
+
     // Track request context
     const context: RequestContext = {
       requestId: id,
@@ -189,6 +264,12 @@ export class ProtocolHandler {
     // Validate method
     if (typeof method !== 'string' || !method) {
       return; // Notifications don't get responses
+    }
+
+    // Handle 'initialized' notification
+    if (method === 'initialized') {
+      this.initialized = true;
+      return;
     }
 
     try {
