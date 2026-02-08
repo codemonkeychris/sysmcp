@@ -423,7 +423,7 @@ export class EventLogLibrary {
   }
 }
 
-// Export adapters, executor, and anonymizer for direct use if needed
+// Export adapters, executor, anonymizer, and public API for direct use if needed
 export { PowerShellExecutor } from './powershell-executor';
 export { EventLogAdapter } from './eventlog-adapter';
 export { 
@@ -432,3 +432,12 @@ export {
   type AnonymizedEventLogEntry, 
   type AnonymizationMapping 
 } from './anonymizer';
+export {
+  WindowsEventLogLibrary,
+  type WindowsEventLogLibraryOptions,
+  type EventLogQuery,
+  type EventLogFilters,
+  type PaginationOptions,
+  type QueryResult,
+  type LogMetadata
+} from './windows-eventlog-lib';
