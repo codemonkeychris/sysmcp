@@ -624,30 +624,31 @@ Schema extensions and resolver improvements.
 #### Task 3.1: Implement Cursor-Based Pagination Support
 - **Description**: Add cursor-based pagination (in addition to offset-based)
 - **Acceptance Criteria**:
-  - [ ] Update EventLogResult to support cursors:
+  - [x] Update EventLogResult to support cursors:
     - startCursor (cursor at beginning of current page)
     - endCursor (cursor at end of current page)
-  - [ ] Generate cursors:
+  - [x] Generate cursors:
     - Base64-encoded format: `base64(logName:eventId:timestamp)`
     - Allows stateless pagination (client can pass cursor to get next page)
-  - [ ] Decode cursors in resolver:
+  - [x] Decode cursors in resolver:
     - Parse cursor to extract logName, eventId, timestamp
     - Use as starting point for next query
     - Return hasNextPage based on result count
-  - [ ] Support both cursor and offset pagination:
+  - [x] Support both cursor and offset pagination:
     - If cursor provided: start from cursor position
     - If offset provided: start from offset
     - Offset takes precedence if both provided
-  - [ ] Pagination metadata correct:
+  - [x] Pagination metadata correct:
     - hasNextPage: true if more results exist
     - hasPreviousPage: true if earlier results exist (tracked for cursor pagination)
 - **Test Requirements**:
-  - [ ] Unit tests: cursor encoding/decoding
-  - [ ] Integration tests: paginate through 1000+ events
-  - [ ] Test hasNextPage/hasPreviousPage flags
-  - [ ] Test cursor-based pagination (follow endCursor to next page)
-  - [ ] Test offset-based pagination
-  - [ ] Verify no off-by-one errors
+  - [x] Unit tests: cursor encoding/decoding
+  - [x] Integration tests: paginate through 1000+ events
+  - [x] Test hasNextPage/hasPreviousPage flags
+  - [x] Test cursor-based pagination (follow endCursor to next page)
+  - [x] Test offset-based pagination
+  - [x] Verify no off-by-one errors
+- **Status**: ✅ COMPLETE
 - **Effort**: M (3 days)
 - **Dependencies**: Task 1.3 (resolver)
 - **Notes**: Cursor pagination complex; careful testing required
