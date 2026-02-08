@@ -83,6 +83,7 @@ export interface EventLogQueryParams {
  * Pagination metadata for query results
  *
  * Provides information about the current result set and available pagination.
+ * Supports both offset-based and cursor-based pagination.
  */
 export interface PageInfo {
   /** Whether there are more results available after this page */
@@ -91,11 +92,17 @@ export interface PageInfo {
   /** Whether there are results available before this page */
   hasPreviousPage: boolean;
 
-  /** Cursor/offset for retrieving the next page */
+  /** Offset for retrieving the next page (offset-based pagination) */
   startCursor: number;
 
-  /** Cursor/offset for retrieving the previous page */
+  /** Offset for retrieving the previous page (offset-based pagination) */
   endCursor: number;
+
+  /** Base64-encoded cursor for fetching the next page (cursor-based pagination) */
+  nextPageCursor?: string;
+
+  /** Base64-encoded cursor for fetching the previous page (cursor-based pagination) */
+  previousPageCursor?: string;
 }
 
 /**

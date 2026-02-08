@@ -569,7 +569,150 @@ describe('EventLog GraphQL Resolver', () => {
     });
   });
 
-  describe('Resolver export', () => {
+  describe('Cursor-based pagination', () => {
+    it('should accept cursor parameter', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [{ id: 1 }],
+        totalCount: 1,
+        hasMore: false
+      });
+
+      // Create a valid cursor
+      const { encodeCursor } = require('../cursor');
+      const cursor = encodeCursor({
+        logName: 'System',
+        eventId: 100,
+        timestamp: '2024-02-01T10:00:00Z'
+      });
+
+      const result = await eventLogsResolver(null, {
+        logName: 'System',
+        cursor,
+        offset: 0,
+        limit: 100
+      }, context);
+
+      expect(result).toBeDefined();
+      expect(mockProvider.query).toHaveBeenCalled();
+    });
+
+    it('should reject invalid cursor', async () => {
+      try {
+        await eventLogsResolver(null, {
+          logName: 'System',
+          cursor: 'invalid-cursor-not-base64!!!',
+          offset: 0,
+          limit: 100
+        }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidCursor);
+      }
+    });
+
+    it('should generate nextPageCursor when results have more pages', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [
+          { id: 1, timeCreated: new Date('2024-02-01T10:00:00Z'), eventId: 100, providerName: 'System' },
+          { id: 2, timeCreated: new Date('2024-02-01T11:00:00Z'), eventId: 101, providerName: 'System' }
+        ],
+        totalCount: 100,
+        hasMore: true
+      });
+
+      const result = await eventLogsResolver(null, {
+        logName: 'System',
+        offset: 0,
+        limit: 100
+      }, context);
+
+      expect(result.pageInfo.nextPageCursor).toBeDefined();
+      expect(result.pageInfo.nextPageCursor).toMatch(/^[A-Za-z0-9+/=]+$/); // Valid base64
+    });
+
+    it('should not generate nextPageCursor when no more pages', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [{ id: 1 }],
+        totalCount: 1,
+        hasMore: false
+      });
+
+      const result = await eventLogsResolver(null, {
+        logName: 'System',
+        offset: 0,
+        limit: 100
+      }, context);
+
+      expect(result.pageInfo.nextPageCursor).toBeUndefined();
+    });
+
+    it('should generate previousPageCursor when offset > 0', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [
+          { id: 1, timeCreated: new Date('2024-02-01T10:00:00Z'), eventId: 100, providerName: 'System' }
+        ],
+        totalCount: 100,
+        hasMore: true
+      });
+
+      const result = await eventLogsResolver(null, {
+        logName: 'System',
+        offset: 10,
+        limit: 100
+      }, context);
+
+      expect(result.pageInfo.previousPageCursor).toBeDefined();
+      expect(result.pageInfo.previousPageCursor).toMatch(/^[A-Za-z0-9+/=]+$/); // Valid base64
+    });
+
+    it('should not generate previousPageCursor when at beginning', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [{ id: 1 }],
+        totalCount: 100,
+        hasMore: true
+      });
+
+      const result = await eventLogsResolver(null, {
+        logName: 'System',
+        offset: 0,
+        limit: 100
+      }, context);
+
+      expect(result.pageInfo.previousPageCursor).toBeUndefined();
+    });
+
+    it('should include nextPageCursor with entry data encoded', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [
+          {
+            id: 1,
+            timeCreated: new Date('2024-02-01T10:00:00Z'),
+            eventId: 1000,
+            providerName: 'System',
+            message: 'Test event'
+          }
+        ],
+        totalCount: 100,
+        hasMore: true
+      });
+
+      const result = await eventLogsResolver(null, {
+        logName: 'System',
+        offset: 0,
+        limit: 100
+      }, context);
+
+      expect(result.pageInfo.nextPageCursor).toBeDefined();
+
+      // Verify cursor can be decoded
+      const { decodeCursor } = require('../cursor');
+      const decoded = decodeCursor(result.pageInfo.nextPageCursor!);
+      expect(decoded.logName).toBe('System');
+      expect(decoded.eventId).toBe(1000);
+    });
+  });
     it('should export resolver with Query field', () => {
       expect(eventlogResolver).toEqual({
         Query: {
