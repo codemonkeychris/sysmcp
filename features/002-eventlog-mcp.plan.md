@@ -108,76 +108,173 @@ The implementation focuses on Windows EventLog API integration via node-ffi or P
 
 ## Components to Create/Modify
 
-### 1. EventLog Query Provider (`/src/services/eventlog/provider.ts`)
+### 0. Windows EventLog Library - `/src/services/eventlog/lib/`
 
-**Responsibility**: Query Windows EventLog API and return raw event data
+This is a **reusable, decoupled library** that encapsulates Windows EventLog complexity. Can be used independently of SysMCP.
 
-**Key Features**:
-- Query Windows EventLog using node-ffi or PowerShell (TBD in research phase)
-- Support multiple event logs (System, Application, Security, custom)
-- Apply API-level filtering (time range, severity, source) for efficiency
-- Pagination support via offset/limit
-- Graceful error handling (permission denied, log not found, service unavailable)
-- Per-query metrics collection (start time, end time, result count)
+#### 0a. Low-Level FFI Bindings (`wevtapi-bindings.ts`)
 
-**Interface**:
+**Responsibility**: Type-safe wrapper around wevtapi.dll Windows API
+
 ```typescript
-interface EventLogQuery {
-  logName?: string;        // Default: "System"
-  minLevel?: EventLevel;   // Default: INFO
-  source?: string;         // Exact match on event source
-  startTime?: Date;        // Inclusive time range
-  endTime?: Date;
-  messageContains?: string;// Case-insensitive substring
-  offset: number;          // Default: 0
-  limit: number;           // Default: 1000, max: 1000
+// wevtapi-bindings.ts - Low-level FFI layer
+export interface EvtOpenLogParams {
+  channelPath: string;      // e.g., "System", "Application"
+  flags: number;            // EVT_OPEN_LOG_FLAGS
 }
 
-interface RawEventLogEntry {
+export interface EvtQueryParams {
+  logHandle: Pointer;
+  query: string;            // XPath filter expression
+  flags: number;            // EVT_QUERY_FLAGS
+}
+
+export class WevtApiBindings {
+  // FFI function bindings
+  evtOpenLog(params: EvtOpenLogParams): Pointer;
+  evtQuery(params: EvtQueryParams): Pointer;
+  evtNext(resultSet: Pointer, maxResults: number): Pointer[];
+  evtGetEventInfo(eventHandle: Pointer, infoType: number): any;
+  evtClose(handle: Pointer): boolean;
+  
+  // Helper: convert Windows API error codes to readable messages
+  getErrorMessage(errorCode: number): string;
+}
+```
+
+**Key Responsibility**:
+- Wrap wevtapi.dll functions with FFI
+- Handle buffer management and memory safety
+- Convert error codes to meaningful messages
+- Type-safe pointer handling
+
+#### 0b. Query Engine (`eventlog-query-engine.ts`)
+
+**Responsibility**: High-level query API hiding Windows API details
+
+```typescript
+export interface EventLogQueryOptions {
+  logName: string;
+  filters?: {
+    minLevel?: EventLevel;
+    source?: string;
+    eventId?: number;
+    startTime?: Date;
+    endTime?: Date;
+    messageContains?: string;
+  };
+  pagination?: {
+    offset: number;
+    limit: number;
+  };
+}
+
+export interface QueryResult {
+  entries: RawEventLogEntry[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export class EventLogQueryEngine {
+  constructor(bindings: WevtApiBindings);
+  
+  // Core query method
+  async query(options: EventLogQueryOptions): Promise<QueryResult>;
+  
+  // Helper: build XPath filter expression from options
+  private buildFilterExpression(filters: any): string;
+  
+  // Helper: extract properties from event handle
+  private extractEventProperties(eventHandle: Pointer): RawEventLogEntry;
+  
+  // Cleanup
+  close(): void;
+}
+```
+
+**Key Responsibility**:
+- Build XPath filter expressions from query parameters
+- Iterate through result set with pagination
+- Extract event properties from Windows API objects
+- Handle timeouts and large result sets
+
+#### 0c. Reusable Library Export (`windows-eventlog-lib.ts`)
+
+**Responsibility**: Clean, documented public API for the library
+
+```typescript
+export interface WindowsEventLogLibraryOptions {
+  maxResults?: number;              // Max results per query (default: 1000)
+  timeoutMs?: number;               // Query timeout (default: 5000ms)
+  logNames?: string[];              // Allowed logs (default: standard Windows logs)
+}
+
+export interface RawEventLogEntry {
   id: string;
   timestamp: Date;
   level: EventLevel;
   source: string;
   eventId: number;
-  username: string;        // Raw, before anonymization
-  computername: string;    // Raw, before anonymization
-  message: string;         // Raw, before anonymization
+  username: string;
+  computername: string;
+  message: string;
 }
 
-interface EventLogProviderResult {
-  entries: RawEventLogEntry[];
-  totalCount: number;       // Total matching events (if available)
-  hasMore: boolean;         // Whether more results exist beyond this page
-  metrics: {
-    queryStartTime: number;
-    queryEndTime: number;
-    responseDurationMs: number;
-    entriesReturned: number;
-  };
-}
-
-class EventLogProvider {
-  query(params: EventLogQuery): Promise<EventLogProviderResult>;
+export class WindowsEventLogLibrary {
+  constructor(options?: WindowsEventLogLibraryOptions);
+  
+  // Core query method - returns raw events
+  async query(query: EventLogQuery): Promise<{
+    entries: RawEventLogEntry[];
+    totalCount: number;
+    hasMore: boolean;
+  }>;
+  
+  // Helper: list available event logs
+  async getAvailableLogNames(): Promise<string[]>;
+  
+  // Helper: get log statistics
+  async getLogMetadata(logName: string): Promise<{
+    recordCount: number;
+    oldestEntry: Date;
+    newestEntry: Date;
+  }>;
+  
+  // Cleanup
+  close(): void;
 }
 ```
 
-**Windows API Integration Research**:
-- **Option A: PowerShell CLI**: Run `Get-EventLog` or `Get-WinEvent` via child process
-  - Pros: No native bindings, easy to test, Windows-native
-  - Cons: Slower (process spawn overhead), harder to paginate efficiently
-- **Option B: node-ffi**: Call Windows EventLog C API directly
-  - Pros: Fast, fine-grained control, better pagination
-  - Cons: Requires native bindings, platform-specific, harder to test
-- **Option C: win32-eventlog npm package** (if available)
-  - Pros: Pre-built, maintained, easy to use
-  - Cons: Dependency on third-party package
-- **Recommendation for MVP**: Start with PowerShell (simpler, testable), migrate to node-ffi if performance issues
+**Key Responsibility**:
+- Provide clean, TypeScript-friendly public API
+- Hide all Windows API complexity
+- Document all parameters and return types
+- Handle errors gracefully
+- Support efficient pagination
 
-**Error Handling Strategy**:
-- Permission denied on specific log → Log warning, return partial results or empty array
-- Log not found → Return empty results
-- Windows API service unavailable → Return GraphQL error with generic message
-- Filter syntax error → Validate parameters before API call, return GraphQL error
+### 1. EventLog Service Provider (`/src/services/eventlog/provider.ts`)
+
+**Responsibility**: Integrate Windows EventLog library with SysMCP
+
+**Key Features**:
+- Wrap WindowsEventLogLibrary for SysMCP use
+- Configuration state (hardcoded enabled for MVP, extensible for Config UI)
+- Service lifecycle integration (start, stop, healthcheck)
+- Error handling and logging via SysMCP logger
+- Audit logging for queries
+
+**Interface**:
+```typescript
+class EventLogProvider {
+  constructor(logger: Logger, config: Config);
+  
+  async start(): Promise<void>;
+  async stop(): Promise<void>;
+  async healthcheck(): Promise<boolean>;
+  
+  async query(params: EventLogQuery): Promise<EventLogProviderResult>;
+}
+```
 
 ### 2. PII Anonymization Engine (`/src/services/eventlog/anonymizer.ts`)
 
@@ -569,35 +666,121 @@ registry.register('eventlog', eventlogService);
 
 ## Implementation Sequence & Critical Path
 
-### Phase 1: Foundation (Weeks 1-2)
+### Phase 0: Windows EventLog Library (Weeks 1-2)
+
+This phase creates a reusable, decoupled Windows EventLog library encapsulating all Windows API complexity. This library can be used independently of SysMCP.
 
 **Tasks**:
-1. Research Windows EventLog API options (PowerShell vs node-ffi)
-   - Create proof-of-concept with each approach
-   - Measure performance: query time, pagination efficiency
-   - Test permission denied gracefully
-   - **Milestone**: Decide on API approach, document trade-offs
 
-2. Create EventLog service scaffolding
-   - `/src/services/eventlog/provider.ts` (skeleton)
-   - `/src/services/eventlog/types.ts` (all interfaces)
-   - `/src/services/eventlog/anonymizer.ts` (skeleton)
-   - `/src/services/eventlog/metrics.ts` (skeleton)
-   - `/__tests__/services/eventlog/` (test directory)
-   - **Milestone**: All files exist with proper imports
+1. **Research & Proof-of-Concept** (Week 1)
+   - Research node-ffi and wevtapi.dll Windows API documentation
+   - Create POC: low-level FFI bindings to wevtapi functions
+   - Test: EvtOpenLog, EvtQuery, EvtNext for event retrieval
+   - Measure performance vs PowerShell approach
+   - Document error scenarios (permission denied, missing logs, timeouts)
+   - **Deliverable**: POC code + performance benchmarks + API design document
 
-3. Implement EventLog Provider (raw query)
-   - Query System event log
-   - Apply filters (time range, severity, source)
-   - Handle pagination (offset/limit)
-   - Graceful error handling
-   - **Milestone**: Can query EventLog and return raw events, unit tests pass
+2. **Low-Level FFI Bindings** (Week 1-2)
+   - Create `/src/services/eventlog/lib/wevtapi-bindings.ts`
+   - FFI bindings for key functions:
+     - `EvtOpenLog` - open an event log
+     - `EvtQuery` - query events with filter expression
+     - `EvtNext` - get next event in result set
+     - `EvtGetEventInfo` - extract event properties
+     - `EvtClose` - close handles and cleanup
+   - Handle Windows API error codes gracefully
+   - Type-safe wrapper for pointers and buffers
+   - **Deliverable**: Testable FFI bindings with unit tests
 
-### Phase 2: PII Anonymization (Weeks 2-3)
+3. **Query Engine** (Week 2)
+   - Create `/src/services/eventlog/lib/eventlog-query-engine.ts`
+   - High-level query API that wraps FFI bindings:
+     - `query(EventLogQuery): Promise<{entries, totalCount, hasMore}>`
+     - Filter expression builder (XPath format for EventLog)
+     - Result pagination handling
+     - Timeout and error handling
+   - **Deliverable**: Clean API that hides Windows API complexity
+
+4. **Reusable Library Package** (Week 2)
+   - Create `/src/services/eventlog/lib/windows-eventlog-lib.ts`
+   - Export WindowsEventLogLibrary class
+   - Document public API, parameters, return types
+   - Create library unit tests with mocked wevtapi.dll
+   - **Deliverable**: Self-contained library with documentation
+
+### Phase 1: SysMCP Integration (Weeks 2-3)
 
 **Tasks**:
-1. Implement PII Anonymization Engine
+
+1. **Service Provider** (Week 2)
+   - Create `/src/services/eventlog/provider.ts`
+   - Wrap WindowsEventLogLibrary with SysMCP-specific logic
+   - Service lifecycle integration (start, stop, healthcheck)
+   - Configuration state (hardcoded enabled for MVP)
+   - **Deliverable**: EventLogProvider ready for GraphQL layer
+
+2. **Type Definitions** (Week 2)
+   - Create `/src/services/eventlog/types.ts`
+   - EventLogEntry, EventLogQuery, EventLogResult interfaces
+   - PII-related types
+   - Error types
+   - **Deliverable**: Shared type definitions
+
+### Phase 2: PII Anonymization (Weeks 3-4)
+
+**Tasks**:
+
+1. **Implement PII Anonymization Engine**
+   - Create `/src/services/eventlog/anonymizer.ts`
    - Username pattern matching and masking
+   - Computer name masking
+   - IP address (IPv4/IPv6) masking
+   - Message content scanning & anonymization
+   - Consistent hashing for anonymization IDs
+   - Anonymization mapping persistence
+   - **Milestone**: Can anonymize events with consistent hashing, security tests pass
+
+2. **Integration testing**
+   - Raw query → anonymization → result verification
+   - Consistency: same PII → same anon ID across queries
+   - **Milestone**: Integration tests pass
+
+### Phase 3: GraphQL Integration (Weeks 3-4)
+
+**Tasks**:
+
+1. **Extend GraphQL schema**
+   - Add EventLogEntry, EventLogResult, PageInfo types
+   - Add eventLogs query with all parameters
+   - Add EventLogQueryMetrics type
+
+2. **Implement resolver**
+   - Parse and validate query parameters
+   - Call EventLogProvider
+   - Apply anonymization
+   - Calculate pagination metadata
+   - Collect metrics
+   - Return GraphQL result
+
+3. **Error handling in resolver**
+   - Input validation errors
+   - Service disabled errors
+   - API errors (permission denied, etc.)
+   - **Milestone**: GraphQL queries work end-to-end
+
+### Phase 4: Metrics & Configuration (Week 4)
+
+**Tasks**:
+
+1. **Implement metrics collector**
+   - Per-query metrics collection
+   - Metrics summary calculation
+   - Optional persistence to file
+
+2. **Service registration & configuration**
+   - Register EventLog service with registry
+   - Configuration: hardcoded enabled for MVP
+   - **Milestone**: Service properly integrated with registry
    - Computer name masking
    - IP address (IPv4/IPv6) masking
    - Message content scanning
@@ -705,32 +888,99 @@ const entries = JSON.parse(result);
 
 ---
 
-### Option B: node-ffi (Direct Windows API)
+### Option B: node-ffi (Direct Windows API) - ✅ SELECTED
 
-**Approach**: Call Windows EventLog C API directly via FFI
+**Approach**: Create a reusable Windows EventLog library using node-ffi that abstracts the Windows EventLog C API, encapsulating complexity while providing efficient pagination and query support.
 
+**Architecture**:
+```
+/src/services/eventlog/
+├── lib/
+│   ├── windows-eventlog-lib.ts        # Reusable library (decoupled from SysMCP)
+│   ├── wevtapi-bindings.ts            # Low-level FFI bindings to wevtapi.dll
+│   ├── eventlog-query-engine.ts       # High-level query engine with filters
+│   └── __tests__/
+│       ├── wevtapi-bindings.test.ts
+│       ├── eventlog-query-engine.test.ts
+│       └── windows-eventlog-lib.test.ts
+├── provider.ts                         # SysMCP integration layer
+└── index.ts                           # Public exports
+```
+
+**Library Design**:
 ```typescript
-// Example pseudocode
-const lib = ffi.Library('wevtapi.dll', {
-  EvtOpenLog: ['pointer', ['pointer', 'string', 'uint']],
-  EvtQuery: ['pointer', ['pointer', 'string', 'string', 'uint']],
-  // ... more API functions
-});
+// windows-eventlog-lib.ts - Exported API
+export interface EventLogLibraryOptions {
+  maxResults?: number;           // Max results per query (default: 1000)
+  timeoutMs?: number;            // Query timeout (default: 5000ms)
+}
+
+export interface EventLogQuery {
+  logName: string;               // "System", "Application", "Security", etc.
+  filters?: {
+    minLevel?: EventLevel;
+    source?: string;
+    eventId?: number;
+    startTime?: Date;
+    endTime?: Date;
+    messageContains?: string;
+  };
+  pagination?: {
+    offset: number;              // Skip N results
+    limit: number;               // Return up to N results
+  };
+}
+
+export interface RawEventLogEntry {
+  id: string;
+  timestamp: Date;
+  level: EventLevel;
+  source: string;
+  eventId: number;
+  username: string;
+  computername: string;
+  message: string;
+}
+
+export class WindowsEventLogLibrary {
+  constructor(options?: EventLogLibraryOptions);
+  
+  // Core query method - returns raw events with pagination support
+  async query(query: EventLogQuery): Promise<{
+    entries: RawEventLogEntry[];
+    totalCount: number;
+    hasMore: boolean;
+  }>;
+  
+  // Helper: get all available log names
+  async getAvailableLogNames(): Promise<string[]>;
+  
+  // Helper: get metadata about a log
+  async getLogMetadata(logName: string): Promise<{
+    recordCount: number;
+    oldestEntry: Date;
+    newestEntry: Date;
+  }>;
+  
+  // Clean up resources
+  close(): void;
+}
 ```
 
 **Pros**:
-- Fast: no process overhead
-- Fine-grained control over queries
-- Better pagination support (get results lazily)
-- Can filter at API level
+- ✅ Fast: no process overhead (~5-10ms per query vs 100-200ms for PowerShell)
+- ✅ Fine-grained control over queries and filters
+- ✅ Efficient pagination: lazy-load results at API level, not in application
+- ✅ Reusable library: decoupled from SysMCP, can be used in other projects
+- ✅ Testable: mock wevtapi.dll bindings for unit tests
+- ✅ Scales: handles large result sets efficiently
 
 **Cons**:
-- Requires native bindings (build complexity)
-- Platform-specific (Windows only)
-- Harder to test
-- More error-prone
+- More complex: FFI bindings require understanding Windows API
+- Platform-specific: Windows only (intentional for SysMCP)
+- Build complexity: requires node-ffi dependency
 
-**Recommended for MVP**: ❌ No (post-MVP optimization)
+**Decision**: ✅ **YES** - Pursue Option B with dedicated library encapsulation
 
 ---
 
@@ -1027,11 +1277,37 @@ try {
 
 **Recommendation**: Option A (JSON file) for MVP, migrate to SQLite if needed
 
-### Q2: Windows API Approach
+### Q2: Windows API Approach - ✅ DECIDED: Option B (node-ffi Library)
 
-**Decision Needed**: PowerShell vs node-ffi?
+**Decision**: Pursue **Option B: node-ffi with dedicated reusable library** as the primary Windows EventLog integration approach.
 
-**Recommendation**: Start with PowerShell for MVP (simpler, testable), migrate to node-ffi if performance is issue
+**Rationale**:
+- **Performance**: node-ffi provides 10-20x faster queries than PowerShell (~5-10ms vs ~100-200ms per query)
+- **Pagination Efficiency**: Direct API access enables lazy-loading and efficient server-side pagination
+- **Reusability**: Encapsulated library can be used in other projects beyond SysMCP
+- **Fine-grained Control**: Direct API access allows filtering at the API level, not application level
+- **Scalability**: Handles large result sets efficiently without process overhead
+
+**Library Architecture** (see Component 0 above):
+- `/src/services/eventlog/lib/wevtapi-bindings.ts` - Low-level FFI bindings to wevtapi.dll
+- `/src/services/eventlog/lib/eventlog-query-engine.ts` - High-level query engine with filtering
+- `/src/services/eventlog/lib/windows-eventlog-lib.ts` - Clean, documented public API
+
+**Implementation Approach**:
+- **Phase 0 (Weeks 1-2)**: Research & build the library independently
+- **Phase 1 (Weeks 2-3)**: Integrate library with SysMCP via EventLogProvider
+- Library has full unit test coverage independent of SysMCP
+- Can be published as standalone npm package post-MVP if desired
+
+**Trade-offs Accepted**:
+- More complex than PowerShell approach
+- Windows-specific (by design - SysMCP is Windows-only)
+- Build complexity (requires node-ffi setup)
+
+**Mitigation**:
+- Comprehensive unit tests for library code
+- Clear abstractions between library and SysMCP integration layer
+- Documentation of FFI bindings and API constraints
 
 ### Q3: Message Content Filtering
 
