@@ -126,6 +126,11 @@ export class ProtocolHandler {
       this.handleInitialize(params, id)
     );
 
+    // Register tools/list handler (will be overridden by service manager)
+    this.registerHandler('tools/list', async () => {
+      return { tools: [] };
+    });
+
     this.readline.on('line', (line: string) => {
       this.handleLine(line);
     });
