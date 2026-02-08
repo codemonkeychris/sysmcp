@@ -757,24 +757,34 @@ Metrics collection and service configuration.
 #### Task 4.2: Design Configuration Support (Hardcoded MVP)
 - **Description**: Design service configuration system for future Config UI
 - **Acceptance Criteria**:
-  - [ ] Create file: `/src/services/eventlog/config.ts`
-  - [ ] Implement configuration interface:
-    - `interface EventLogConfig { enabled: boolean; permissionLevel: 'read-only' | 'read-write'; }`
-  - [ ] Implement `EventLogConfigManager`:
-    - `isEnabled(): boolean`
-    - `getPermissionLevel(): string`
-    - `setEnabled(enabled: boolean): void` (for future UI)
-    - `setPermissionLevel(level: string): void` (for future UI)
-  - [ ] For MVP: hardcode enabled=true, permissionLevel='read-only'
-  - [ ] Design persistent storage:
-    - Interface for config persistence (will be implemented in Feature 5)
-    - Document how Config UI will integrate
-  - [ ] Document in comments how future Config UI will call setters
+  - [x] Create file: `/src/services/eventlog/config.ts`
+  - [x] Implement configuration interface:
+    - [x] `interface EventLogConfig { enabled: boolean; permissionLevel: PermissionLevel; maxResults?: number; timeoutMs?: number; enableAnonymization?: boolean; logLevel?: string; }`
+  - [x] Implement `EventLogConfigManager`:
+    - [x] `isEnabled(): boolean`
+    - [x] `getPermissionLevel(): PermissionLevel`
+    - [x] `setEnabled(enabled: boolean): void` (for future UI)
+    - [x] `setPermissionLevel(level: PermissionLevel): void` (for future UI)
+    - [x] Additional getters/setters for all config properties
+  - [x] For MVP: hardcode enabled=true, permissionLevel='read-only'
+  - [x] Design persistent storage:
+    - [x] Create global getConfigManager/setConfigManager/resetConfigManager
+    - [x] Document how persistence will work (comments for Feature 5)
+    - [x] Document how Config UI will integrate
+  - [x] Document in comments how future Config UI will call setters
+  - [x] Type-safe PermissionLevel enum type
 - **Test Requirements**:
-  - [ ] Unit test: config getters/setters work
-  - [ ] Test hardcoded values for MVP
+  - [x] Unit test: config getters/setters work (50+ test cases)
+  - [x] Test hardcoded values for MVP
+  - [x] Test initialization with custom values
+  - [x] Test reset to defaults functionality
+  - [x] Test global config manager
+  - [x] Test validation of setter values
+  - [x] Test configuration workflows for UI integration scenarios
 - **Effort**: S (1 day)
 - **Dependencies**: Task 1.0 (provider)
+- **Status**: ✅ COMPLETE
+- **Completed**: $(date +%Y-%m-%d)
 
 ---
 
