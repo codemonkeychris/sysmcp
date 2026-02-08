@@ -6,6 +6,7 @@
  * and PII anonymization.
  */
 
+import { GraphQLError } from 'graphql';
 import { Logger } from '../logger/types';
 import { EventLogProvider } from '../services/eventlog/provider';
 import {
@@ -13,6 +14,50 @@ import {
   EventLevel
 } from '../services/eventlog/types';
 import { PiiAnonymizer } from '../services/eventlog/lib/src/anonymizer';
+
+/**
+ * Custom GraphQL error codes for EventLog operations
+ */
+export enum EventLogErrorCode {
+  InvalidLimit = 'INVALID_LIMIT',
+  InvalidOffset = 'INVALID_OFFSET',
+  InvalidDateRange = 'INVALID_DATE_RANGE',
+  InvalidStartTime = 'INVALID_START_TIME',
+  InvalidEndTime = 'INVALID_END_TIME',
+  InvalidEventLevel = 'INVALID_EVENT_LEVEL',
+  MissingLogName = 'MISSING_LOG_NAME',
+  ServiceDisabled = 'SERVICE_DISABLED',
+  ServiceUnavailable = 'SERVICE_UNAVAILABLE',
+  PermissionDenied = 'PERMISSION_DENIED',
+  WindowsApiError = 'WINDOWS_API_ERROR',
+  AnonymizationFailure = 'ANONYMIZATION_FAILURE',
+  UnknownError = 'UNKNOWN_ERROR'
+}
+
+/**
+ * Represents a GraphQL error with code and timestamp
+ */
+export class EventLogGraphQLError extends GraphQLError {
+  code: EventLogErrorCode;
+  timestamp: Date;
+  internalDetails?: string;
+
+  constructor(
+    message: string,
+    code: EventLogErrorCode,
+    internalDetails?: string
+  ) {
+    super(message, {
+      extensions: {
+        code,
+        timestamp: new Date().toISOString()
+      }
+    });
+    this.code = code;
+    this.timestamp = new Date();
+    this.internalDetails = internalDetails;
+  }
+}
 
 /**
  * Arguments for the eventLogs GraphQL query
@@ -57,24 +102,48 @@ function parseEventLevel(level?: string): EventLevel | undefined {
 /**
  * Validate query arguments
  *
- * @throws Error if validation fails
+ * @throws EventLogGraphQLError if validation fails
  */
 function validateArgs(args: EventLogsArgs): void {
   // Validate required fields
   if (!args.logName || typeof args.logName !== 'string') {
-    throw new Error('logName is required and must be a string');
+    throw new EventLogGraphQLError(
+      'logName is required and must be a string',
+      EventLogErrorCode.MissingLogName
+    );
   }
 
-  // Validate limit
+  // Validate limit (must be 1-1000 per task requirements)
   const limit = args.limit ?? 1000;
-  if (limit < 1 || limit > 10000) {
-    throw new Error('limit must be between 1 and 10000');
+  if (limit < 1 || limit > 1000) {
+    throw new EventLogGraphQLError(
+      'limit must be between 1 and 1000',
+      EventLogErrorCode.InvalidLimit
+    );
   }
 
   // Validate offset
   const offset = args.offset ?? 0;
   if (offset < 0) {
-    throw new Error('offset must be >= 0');
+    throw new EventLogGraphQLError(
+      'offset must be >= 0',
+      EventLogErrorCode.InvalidOffset
+    );
+  }
+
+  // Validate individual dates before checking range
+  if (args.startTime && isNaN(new Date(args.startTime).getTime())) {
+    throw new EventLogGraphQLError(
+      'startTime must be a valid ISO 8601 date string',
+      EventLogErrorCode.InvalidStartTime
+    );
+  }
+
+  if (args.endTime && isNaN(new Date(args.endTime).getTime())) {
+    throw new EventLogGraphQLError(
+      'endTime must be a valid ISO 8601 date string',
+      EventLogErrorCode.InvalidEndTime
+    );
   }
 
   // Validate date range if both provided
@@ -82,31 +151,20 @@ function validateArgs(args: EventLogsArgs): void {
     const start = new Date(args.startTime);
     const end = new Date(args.endTime);
 
-    if (isNaN(start.getTime())) {
-      throw new Error('startTime must be a valid ISO 8601 date string');
-    }
-
-    if (isNaN(end.getTime())) {
-      throw new Error('endTime must be a valid ISO 8601 date string');
-    }
-
     if (start > end) {
-      throw new Error('startTime must be <= endTime');
+      throw new EventLogGraphQLError(
+        'startTime must be <= endTime',
+        EventLogErrorCode.InvalidDateRange
+      );
     }
-  }
-
-  // Validate individual dates
-  if (args.startTime && isNaN(new Date(args.startTime).getTime())) {
-    throw new Error('startTime must be a valid ISO 8601 date string');
-  }
-
-  if (args.endTime && isNaN(new Date(args.endTime).getTime())) {
-    throw new Error('endTime must be a valid ISO 8601 date string');
   }
 
   // Validate event level
   if (args.minLevel && !parseEventLevel(args.minLevel)) {
-    throw new Error(`minLevel must be one of: ${Object.values(EventLevel).join(', ')}`);
+    throw new EventLogGraphQLError(
+      `minLevel must be one of: ${Object.values(EventLevel).join(', ')}`,
+      EventLogErrorCode.InvalidEventLevel
+    );
   }
 }
 
@@ -135,8 +193,14 @@ export async function eventLogsResolver(
 
     // Check service availability
     if (!context.eventlogProvider) {
-      logger.warn('EventLog provider not available');
-      throw new Error('EventLog service unavailable');
+      logger.error('EventLog provider not available - service disabled', {
+        logName: args.logName
+      });
+      throw new EventLogGraphQLError(
+        'EventLog service not available',
+        EventLogErrorCode.ServiceDisabled,
+        'EventLog provider not initialized'
+      );
     }
 
     const limit = args.limit ?? 1000;
@@ -244,36 +308,105 @@ export async function eventLogsResolver(
     return gqlResult;
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    const message = error instanceof Error ? error.message : String(error);
+    const errorDetails = error instanceof Error ? error : new Error(String(error));
 
-    // Log the error with full details
-    logger.error('EventLog query failed', {
-      error: message,
+    // Classify and handle specific error types
+    if (error instanceof EventLogGraphQLError) {
+      // Already properly formatted, just log and rethrow
+      logger.warn('EventLog validation error', {
+        code: error.code,
+        message: error.message,
+        timestamp: error.timestamp.toISOString(),
+        durationMs,
+        internalDetails: error.internalDetails
+      });
+      throw error;
+    }
+
+    // Check for service availability errors
+    if (
+      errorDetails.message.includes('service unavailable') ||
+      errorDetails.message.includes('disabled') ||
+      errorDetails.message.includes('Service unavailable')
+    ) {
+      logger.error('EventLog service unavailable', {
+        error: errorDetails.message,
+        logName: args.logName,
+        durationMs,
+        stack: errorDetails.stack
+      });
+      throw new EventLogGraphQLError(
+        'EventLog service not available',
+        EventLogErrorCode.ServiceUnavailable,
+        errorDetails.message
+      );
+    }
+
+    // Check for permission errors
+    if (
+      errorDetails.message.includes('Permission') ||
+      errorDetails.message.includes('permission') ||
+      errorDetails.message.includes('Access denied')
+    ) {
+      logger.error('Permission denied for EventLog query', {
+        error: errorDetails.message,
+        logName: args.logName,
+        durationMs,
+        stack: errorDetails.stack
+      });
+      throw new EventLogGraphQLError(
+        'Permission denied: insufficient access to event logs',
+        EventLogErrorCode.PermissionDenied,
+        errorDetails.message
+      );
+    }
+
+    // Check for anonymization failures (critical)
+    if (errorDetails.message.includes('anonymiz') || errorDetails.message.includes('anonymi')) {
+      logger.error('Anonymization failure - critical error', {
+        error: errorDetails.message,
+        logName: args.logName,
+        durationMs,
+        stack: errorDetails.stack
+      });
+      throw new EventLogGraphQLError(
+        'Failed to process results',
+        EventLogErrorCode.AnonymizationFailure,
+        errorDetails.message
+      );
+    }
+
+    // Windows API errors - log details but return generic message
+    if (
+      errorDetails.message.includes('Windows') ||
+      errorDetails.message.includes('0x') ||
+      errorDetails.message.includes('HRESULT')
+    ) {
+      logger.error('Windows API error occurred', {
+        error: errorDetails.message,
+        logName: args.logName,
+        durationMs,
+        stack: errorDetails.stack
+      });
+      throw new EventLogGraphQLError(
+        'Failed to query event logs',
+        EventLogErrorCode.WindowsApiError,
+        errorDetails.message
+      );
+    }
+
+    // Unknown error - log all details internally
+    logger.error('Unknown error during EventLog query', {
+      error: errorDetails.message,
       logName: args.logName,
       durationMs,
-      stack: error instanceof Error ? error.stack : undefined
+      stack: errorDetails.stack
     });
-
-    // Return GraphQL error message (generic for security)
-    if (message.includes('service unavailable') || message.includes('disabled')) {
-      throw new Error('EventLog service unavailable');
-    }
-
-    if (message.includes('Permission')) {
-      throw new Error('Permission denied: insufficient access to event logs');
-    }
-
-    // For validation errors, return the validation message
-    if (
-      message.includes('must be') ||
-      message.includes('required') ||
-      message.includes('valid')
-    ) {
-      throw new Error(message);
-    }
-
-    // For other errors, return generic message
-    throw new Error('Failed to query event logs');
+    throw new EventLogGraphQLError(
+      'Failed to query event logs',
+      EventLogErrorCode.UnknownError,
+      errorDetails.message
+    );
   }
 }
 
@@ -285,3 +418,8 @@ export const eventlogResolver = {
     eventLogs: eventLogsResolver
   }
 };
+
+/**
+ * Exported error types and codes for use in clients and tests
+ */
+export { EventLogGraphQLError, EventLogErrorCode };

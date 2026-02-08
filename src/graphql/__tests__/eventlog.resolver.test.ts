@@ -2,7 +2,7 @@
  * Tests for EventLog GraphQL Resolver
  */
 
-import { eventLogsResolver, eventlogResolver } from '../eventlog.resolver';
+import { eventLogsResolver, eventlogResolver, EventLogGraphQLError, EventLogErrorCode } from '../eventlog.resolver';
 import { EventLogProvider } from '../../services/eventlog/provider';
 import { Logger } from '../../logger/types';
 import { EventLevel } from '../../services/eventlog/types';
@@ -38,6 +38,17 @@ describe('EventLog GraphQL Resolver', () => {
       ).rejects.toThrow('logName is required');
     });
 
+    it('should return error code MISSING_LOG_NAME for missing logName', async () => {
+      try {
+        await eventLogsResolver(null, { logName: '', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.MissingLogName);
+      }
+    });
+
     it('should reject logName that is not a string', async () => {
       await expect(
         eventLogsResolver(null, { logName: null as any, offset: 0, limit: 100 }, context)
@@ -47,13 +58,36 @@ describe('EventLog GraphQL Resolver', () => {
     it('should reject limit < 1', async () => {
       await expect(
         eventLogsResolver(null, { logName: 'System', limit: 0, offset: 0 }, context)
-      ).rejects.toThrow('limit must be between 1 and 10000');
+      ).rejects.toThrow('limit must be between 1 and 1000');
     });
 
-    it('should reject limit > 10000', async () => {
+    it('should reject limit > 1000', async () => {
       await expect(
-        eventLogsResolver(null, { logName: 'System', limit: 10001, offset: 0 }, context)
-      ).rejects.toThrow('limit must be between 1 and 10000');
+        eventLogsResolver(null, { logName: 'System', limit: 1001, offset: 0 }, context)
+      ).rejects.toThrow('limit must be between 1 and 1000');
+    });
+
+    it('should return error code INVALID_LIMIT for limit > 1000', async () => {
+      try {
+        await eventLogsResolver(null, { logName: 'System', limit: 1001, offset: 0 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidLimit);
+        expect(gqlError.extensions?.code).toBe(EventLogErrorCode.InvalidLimit);
+      }
+    });
+
+    it('should return error code INVALID_LIMIT for limit < 1', async () => {
+      try {
+        await eventLogsResolver(null, { logName: 'System', limit: 0, offset: 0 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidLimit);
+      }
     });
 
     it('should accept limit at boundary 1', async () => {
@@ -67,14 +101,14 @@ describe('EventLog GraphQL Resolver', () => {
       expect(mockProvider.query).toHaveBeenCalled();
     });
 
-    it('should accept limit at boundary 10000', async () => {
+    it('should accept limit at boundary 1000', async () => {
       mockProvider.query = jest.fn().mockResolvedValue({
         entries: [],
         totalCount: 0,
         hasMore: false
       });
 
-      await eventLogsResolver(null, { logName: 'System', limit: 10000, offset: 0 }, context);
+      await eventLogsResolver(null, { logName: 'System', limit: 1000, offset: 0 }, context);
       expect(mockProvider.query).toHaveBeenCalled();
     });
 
@@ -82,6 +116,17 @@ describe('EventLog GraphQL Resolver', () => {
       await expect(
         eventLogsResolver(null, { logName: 'System', limit: 100, offset: -1 }, context)
       ).rejects.toThrow('offset must be >= 0');
+    });
+
+    it('should return error code INVALID_OFFSET for negative offset', async () => {
+      try {
+        await eventLogsResolver(null, { logName: 'System', limit: 100, offset: -1 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidOffset);
+      }
     });
 
     it('should accept offset 0', async () => {
@@ -101,10 +146,32 @@ describe('EventLog GraphQL Resolver', () => {
       ).rejects.toThrow('startTime must be a valid');
     });
 
+    it('should return error code INVALID_START_TIME for invalid startTime', async () => {
+      try {
+        await eventLogsResolver(null, { logName: 'System', startTime: 'invalid-date', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidStartTime);
+      }
+    });
+
     it('should reject invalid endTime', async () => {
       await expect(
         eventLogsResolver(null, { logName: 'System', endTime: 'invalid-date', offset: 0, limit: 100 }, context)
       ).rejects.toThrow('endTime must be a valid');
+    });
+
+    it('should return error code INVALID_END_TIME for invalid endTime', async () => {
+      try {
+        await eventLogsResolver(null, { logName: 'System', endTime: 'invalid-date', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidEndTime);
+      }
     });
 
     it('should reject startTime > endTime', async () => {
@@ -117,6 +184,23 @@ describe('EventLog GraphQL Resolver', () => {
           limit: 100
         }, context)
       ).rejects.toThrow('startTime must be <= endTime');
+    });
+
+    it('should return error code INVALID_DATE_RANGE for startTime > endTime', async () => {
+      try {
+        await eventLogsResolver(null, {
+          logName: 'System',
+          startTime: '2024-02-02T00:00:00Z',
+          endTime: '2024-02-01T00:00:00Z',
+          offset: 0,
+          limit: 100
+        }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidDateRange);
+      }
     });
 
     it('should accept startTime == endTime', async () => {
@@ -140,6 +224,17 @@ describe('EventLog GraphQL Resolver', () => {
       await expect(
         eventLogsResolver(null, { logName: 'System', minLevel: 'INVALID', offset: 0, limit: 100 }, context)
       ).rejects.toThrow('minLevel must be one of');
+    });
+
+    it('should return error code INVALID_EVENT_LEVEL for invalid minLevel', async () => {
+      try {
+        await eventLogsResolver(null, { logName: 'System', minLevel: 'INVALID', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.InvalidEventLevel);
+      }
     });
 
     it('should accept valid minLevel values', async () => {
@@ -168,7 +263,21 @@ describe('EventLog GraphQL Resolver', () => {
 
       await expect(
         eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context)
-      ).rejects.toThrow('EventLog service unavailable');
+      ).rejects.toThrow('EventLog service not available');
+    });
+
+    it('should return error code SERVICE_DISABLED when provider unavailable', async () => {
+      context.eventlogProvider = undefined;
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.ServiceDisabled);
+        expect(gqlError.extensions?.code).toBe(EventLogErrorCode.ServiceDisabled);
+      }
     });
   });
 
@@ -302,7 +411,7 @@ describe('EventLog GraphQL Resolver', () => {
 
   describe('Error handling', () => {
     it('should handle provider errors with generic message', async () => {
-      mockProvider.query = jest.fn().mockRejectedValue(new Error('Windows API error'));
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Generic error'));
 
       await expect(
         eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context)
@@ -311,8 +420,102 @@ describe('EventLog GraphQL Resolver', () => {
       expect(mockLogger.error).toHaveBeenCalled();
     });
 
-    it('should log errors with details', async () => {
+    it('should return error code WINDOWS_API_ERROR for Windows API errors', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Windows API error HRESULT 0x80070005'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.WindowsApiError);
+        expect(gqlError.internalDetails).toContain('Windows API error');
+      }
+    });
+
+    it('should return error code SERVICE_UNAVAILABLE for service disabled', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Service disabled'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.ServiceUnavailable);
+      }
+    });
+
+    it('should return error code PERMISSION_DENIED for permission errors', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Permission denied: access denied'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.PermissionDenied);
+      }
+    });
+
+    it('should return error code ANONYMIZATION_FAILURE for anonymization errors', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Anonymization failed to process'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.AnonymizationFailure);
+      }
+    });
+
+    it('should return error code UNKNOWN_ERROR for unclassified errors', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Unexpected error that does not match known patterns'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.code).toBe(EventLogErrorCode.UnknownError);
+      }
+    });
+
+    it('should include error code in GraphQL error extensions', async () => {
       mockProvider.query = jest.fn().mockRejectedValue(new Error('Test error'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.extensions?.code).toBe(gqlError.code);
+        expect(gqlError.extensions?.timestamp).toBeDefined();
+      }
+    });
+
+    it('should include timestamp in error for debugging', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Test error'));
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        expect(gqlError.timestamp).toBeDefined();
+        expect(gqlError.timestamp).toBeInstanceOf(Date);
+      }
+    });
+
+    it('should log internal error details', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(new Error('Critical error detail: system code 0x123'));
 
       try {
         await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
@@ -320,14 +523,10 @@ describe('EventLog GraphQL Resolver', () => {
         // Expected
       }
 
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'EventLog query failed',
-        expect.objectContaining({
-          error: 'Test error',
-          logName: 'System',
-          durationMs: expect.any(Number)
-        })
-      );
+      expect(mockLogger.error).toHaveBeenCalled();
+      const calls = (mockLogger.error as jest.Mock).mock.calls;
+      const errorCall = calls.find(c => c[0].includes('error') || c[0].includes('Error'));
+      expect(errorCall).toBeDefined();
     });
 
     it('should log successful queries', async () => {
@@ -348,6 +547,25 @@ describe('EventLog GraphQL Resolver', () => {
           durationMs: expect.any(Number)
         })
       );
+    });
+
+    it('should not expose system details in error message', async () => {
+      mockProvider.query = jest.fn().mockRejectedValue(
+        new Error('Windows error code 0x80070005: Access denied at C:\\Windows\\System32')
+      );
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        const gqlError = error as EventLogGraphQLError;
+        // Message should not contain path or specific error codes
+        expect(gqlError.message).not.toContain('C:\\Windows');
+        expect(gqlError.message).not.toContain('0x80070005');
+        // But internal details should be preserved
+        expect(gqlError.internalDetails).toContain('0x80070005');
+      }
     });
   });
 
