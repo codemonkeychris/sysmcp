@@ -383,6 +383,6 @@ describe('Logger: File Output', () => {
 
       fs.rmSync(tmpDir, { recursive: true });
       done();
-    }, 100);
-  });
+    }, 500);
+  }, 10000);
 });

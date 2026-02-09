@@ -372,7 +372,7 @@ export class PiiAnonymizer {
     if (machineNameRegex.test(value)) {
       // Reset regex (global flag resets position on test)
       machineNameRegex.lastIndex = 0;
-      return value.replace(machineNameRegex, (match) => {
+      return value.replace(machineNameRegex, (_match) => {
         return this.getOrCreateToken(this.localMachineName, 'computerNames', 'ANON_COMPUTER');
       });
     }

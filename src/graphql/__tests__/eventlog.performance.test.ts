@@ -12,7 +12,6 @@
 import { eventLogsResolver } from '../eventlog.resolver';
 import { EventLogProvider } from '../../services/eventlog/provider';
 import { Logger } from '../../logger/types';
-import { EventLevel } from '../../services/eventlog/types';
 
 describe('EventLog Performance Tests', () => {
   let mockLogger: Logger;

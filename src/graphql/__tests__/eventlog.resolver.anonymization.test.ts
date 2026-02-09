@@ -5,7 +5,6 @@
 import { eventLogsResolver } from '../eventlog.resolver';
 import { EventLogProvider } from '../../services/eventlog/provider';
 import { Logger } from '../../logger/types';
-import { PiiAnonymizer } from '../../services/eventlog/lib/src/anonymizer';
 import * as fs from 'fs';
 import * as path from 'path';
 

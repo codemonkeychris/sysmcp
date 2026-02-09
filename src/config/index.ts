@@ -89,9 +89,9 @@ export function createConfig(): Config {
     );
   }
 
-  const port = env.PORT ? parseInt(env.PORT, 10) : 3000;
-  if (isNaN(port) || !validatePort(port)) {
-    throw new Error(`Invalid PORT "${env.PORT}". Must be a number between 1 and 65535.`);
+  const port = env.PORT ? parseInt(env.PORT, 10) : (nodeEnv === 'test' ? 0 : 3000);
+  if (isNaN(port) || (port !== 0 && !validatePort(port))) {
+    throw new Error(`Invalid PORT "${env.PORT}". Must be a number between 0 (random) and 65535.`);
   }
 
   const logLevel = env.LOG_LEVEL || 'info';

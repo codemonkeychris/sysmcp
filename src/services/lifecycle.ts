@@ -24,6 +24,8 @@ export interface ServiceLifecycleManager {
   stopService(name: string): Promise<void>;
   restartService(name: string): Promise<void>;
   isServiceHealthy(name: string): boolean;
+  registerInit(serviceName: string, fn: () => Promise<void>): void;
+  registerCleanup(serviceName: string, fn: () => Promise<void>): void;
 }
 
 /**
