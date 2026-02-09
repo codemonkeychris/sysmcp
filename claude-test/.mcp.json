@@ -1,11 +1,12 @@
-   {
-     "mcpServers": {
-       "sysmcp": {
-         "command": "node",
-         "args": ["C:\\Users\\chris\\Code\\SysMCP\\dist\\mcp\\index.js"],
-         "env": {
-           "EVENTLOG_API_URL": "http://localhost:4000/graphql"
-         }
-       }
-     }
-   }
+{
+  "mcpServers": {
+    "sysmcp": {
+      "command": "node",
+      "args": ["C:\\Users\\chris\\Code\\SysMCP\\dist\\mcp\\index.js"],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "EVENTLOG_API_URL": "http://localhost:4000/graphql"
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@
 import { ProtocolHandler } from './protocol-handler';
 import { ServiceManager } from './service-manager';
 import { ToolExecutor } from './tool-executor';
+import { StubTestService } from './stub-service';
 
 const logger = {
   info: (msg: string) => console.error(`[INFO] ${msg}`),
@@ -24,6 +25,11 @@ async function main() {
     const serviceManager = new ServiceManager();
     logger.info('Service manager initialized');
 
+    // Register test service for now
+    const testService = new StubTestService();
+    serviceManager.registerService(testService);
+    logger.info('Test service registered');
+
     // Initialize tool executor
     const toolExecutor = new ToolExecutor(serviceManager);
     logger.info('Tool executor initialized');
@@ -36,6 +42,7 @@ async function main() {
     protocolHandler.registerHandler('tools/list', async () => {
       logger.info('Handling tools/list request');
       const tools = toolExecutor.getTools();
+      logger.info(`Returning ${tools.length} tools`);
       return { tools };
     });
 
