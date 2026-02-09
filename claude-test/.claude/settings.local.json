@@ -3,7 +3,8 @@
     "allow": [
       "mcp__sysmcp__test_hello",
       "mcp__sysmcp__eventlog_query",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__sysmcp__eventlog_list_logs"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -169,6 +169,7 @@ export class EventLogMcpService implements IService {
       const json = await response.json() as any;
 
       if (json.errors) {
+        console.error('GraphQL errors:', json.errors);
         return {
           success: false,
           error: {

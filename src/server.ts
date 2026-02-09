@@ -120,6 +120,15 @@ class ServerImpl implements Server {
       typeDefs,
       resolvers: createResolvers(this.registry, this.logger),
       introspection: true,
+      context: async () => ({
+        registry: this.registry,
+        logger: this.logger,
+        startTime: this.startTime,
+        eventlogProvider: undefined, // Can be added later if needed
+        eventlogAnonymizer: undefined,
+        eventlogMetricsCollector: undefined,
+        eventlogMappingPath: undefined,
+      }),
     });
 
     // Start Apollo Server
