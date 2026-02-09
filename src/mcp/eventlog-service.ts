@@ -13,7 +13,7 @@ export class EventLogMcpService implements IService {
   readonly version = '1.0.0';
   readonly enabled = true;
 
-  constructor(private graphqlUrl: string = 'http://localhost:4000/graphql') {}
+  constructor(private graphqlUrl: string = 'http://localhost:3000/graphql') {}
 
   getTools(): ToolDefinition[] {
     return [

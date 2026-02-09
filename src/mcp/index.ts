@@ -27,7 +27,7 @@ function main() {
 
     // Register EventLog service
     const eventLogService = new EventLogMcpService(
-      process.env.EVENTLOG_API_URL || 'http://localhost:4000/graphql'
+      process.env.EVENTLOG_API_URL || 'http://localhost:3000/graphql'
     );
     serviceManager.registerService(eventLogService);
     logger.info('EventLog service registered');

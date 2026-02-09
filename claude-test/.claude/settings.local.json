@@ -1,11 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__sysmcp__test_hello",
+      "mcp__sysmcp__eventlog_query"
+    ]
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "sysmcp"
-  ],
-  "permissions": {
-    "allow": [
-      "mcp__sysmcp__test_hello"
-    ]
-  }
+  ]
 }
