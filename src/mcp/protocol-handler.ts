@@ -131,6 +131,11 @@ export class ProtocolHandler {
       return { tools: [] };
     });
 
+    // Register resources/list handler (stub for now)
+    this.registerHandler('resources/list', async () => {
+      return { resources: [] };
+    });
+
     this.readline.on('line', (line: string) => {
       this.handleLine(line);
     });
@@ -212,19 +217,6 @@ export class ProtocolHandler {
     // Validate method
     if (typeof method !== 'string' || !method) {
       this.sendError(id, JSON_RPC_ERRORS.INVALID_REQUEST, 'Invalid Request');
-      return;
-    }
-
-    // Check if tools/list or tools/call require initialization
-    const isToolsRequest = method === 'tools/list' || method === 'tools/call';
-
-    // tools/list and tools/call require initialization
-    if (isToolsRequest && !this.initialized) {
-      this.sendError(
-        id,
-        -32002, // Server not initialized (MCP error code)
-        'Server not initialized. Call initialize first.'
-      );
       return;
     }
 
