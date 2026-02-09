@@ -4,9 +4,12 @@
  */
 
 import express, { Express, Request, Response, NextFunction } from 'express';
+import { ApolloServer } from 'apollo-server-express';
 import { Logger } from './logger';
 import { ServiceRegistry } from './services/types';
 import { Config } from './config';
+import { typeDefs } from './graphql/schema';
+import { createResolvers } from './graphql/resolvers';
 
 /**
  * Server instance interface
@@ -45,6 +48,7 @@ class ServerImpl implements Server {
   private config: Config;
   private registry?: ServiceRegistry;
   private httpServer?: ReturnType<Express['listen']>;
+  private apolloServer?: ApolloServer;
   private startTime: number = Date.now();
   private isShuttingDown = false;
 
@@ -55,7 +59,6 @@ class ServerImpl implements Server {
     this.registry = registry;
 
     this.setupMiddleware();
-    this.setupRoutes();
     this.setupErrorHandling();
   }
 
@@ -111,7 +114,20 @@ class ServerImpl implements Server {
   /**
    * Set up routes
    */
-  private setupRoutes(): void {
+  private async setupRoutes(): Promise<void> {
+    // Initialize Apollo Server for GraphQL
+    this.apolloServer = new ApolloServer({
+      typeDefs,
+      resolvers: createResolvers(this.registry, this.logger),
+      introspection: true,
+    });
+
+    // Start Apollo Server
+    await this.apolloServer.start();
+
+    // Mount Apollo Server to /graphql endpoint
+    this.apolloServer.applyMiddleware({ app: this.app, path: '/graphql' });
+
     // Health check endpoint
     this.app.get('/health', (_req: Request, res: Response) => {
       const uptime = Math.floor((Date.now() - this.startTime) / 1000);
@@ -163,6 +179,9 @@ class ServerImpl implements Server {
    * Start the HTTP server
    */
   async start(): Promise<void> {
+    // Set up routes (including GraphQL)
+    await this.setupRoutes();
+
     return new Promise((resolve, reject) => {
       try {
         this.httpServer = this.app.listen(this.config.port, () => {
@@ -202,6 +221,17 @@ class ServerImpl implements Server {
 
     this.isShuttingDown = true;
     this.logger.info('Starting graceful shutdown');
+
+    // Stop Apollo Server if running
+    if (this.apolloServer) {
+      try {
+        await this.apolloServer.stop();
+        this.logger.debug('Apollo Server stopped');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('Error stopping Apollo Server', { error: message });
+      }
+    }
 
     return new Promise((resolve) => {
       // Set 5-second timeout for graceful shutdown
