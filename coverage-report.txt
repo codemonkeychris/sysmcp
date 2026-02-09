@@ -1,0 +1,611 @@
+
+> sysmcp-mcp-host@0.1.0 test
+> jest --testPathPattern=services/eventlog/__tests__|graphql.*eventlog.*test --coverage
+
+PASS src/services/eventlog/__tests__/types.test.ts
+PASS src/services/eventlog/__tests__/config.test.ts
+FAIL src/services/eventlog/__tests__/metrics.test.ts
+  ΓùÅ EventLogMetricsCollector ΓÇ║ recordQuery ΓÇ║ should reject non-numeric duration
+
+    expect(received).toThrow()
+
+    Received function did not throw
+
+      83 |
+      84 |     it('should reject non-numeric duration', () => {
+    > 85 |       expect(() => collector.recordQuery(NaN, 10)).toThrow();
+         |                                                    ^
+      86 |     });
+      87 |
+      88 |     it('should reject negative result count', () => {
+
+      at Object.<anonymous> (src/services/eventlog/__tests__/metrics.test.ts:85:52)
+
+  ΓùÅ EventLogMetricsCollector ΓÇ║ recordQuery ΓÇ║ should reject non-numeric result count
+
+    expect(received).toThrow()
+
+    Received function did not throw
+
+      91 |
+      92 |     it('should reject non-numeric result count', () => {
+    > 93 |       expect(() => collector.recordQuery(100, NaN)).toThrow();
+         |                                                     ^
+      94 |     });
+      95 |
+      96 |     it('should handle zero results', () => {
+
+      at Object.<anonymous> (src/services/eventlog/__tests__/metrics.test.ts:93:53)
+
+  ΓùÅ EventLogMetricsCollector ΓÇ║ reset ΓÇ║ should reset uptime for export
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      228 |       const after = await collector.export();
+      229 |
+    > 230 |       expect(before.uptimeMs).toBeGreaterThan(0);
+          |                               ^
+      231 |       expect(after.uptimeMs).toBeLessThan(before.uptimeMs);
+      232 |     });
+      233 |   });
+
+      at Object.<anonymous> (src/services/eventlog/__tests__/metrics.test.ts:230:31)
+
+  ΓùÅ EventLogMetricsCollector ΓÇ║ export ΓÇ║ should calculate queriesPerSecond
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 10000
+    Received:    Infinity
+
+      257 |       // With 10 queries and some uptime, queriesPerSecond should be positive
+      258 |       expect(report.queriesPerSecond).toBeGreaterThan(0);
+    > 259 |       expect(report.queriesPerSecond).toBeLessThanOrEqual(10000); // Sanity check
+          |                                       ^
+      260 |     });
+      261 |
+      262 |     it('should calculate averageResultsPerQuery', async () => {
+
+      at Object.<anonymous> (src/services/eventlog/__tests__/metrics.test.ts:259:39)
+
+FAIL src/services/eventlog/__tests__/anonymization-store.test.ts
+  ΓùÅ AnonymizationStore ΓÇ║ Error Handling ΓÇ║ should handle concurrent save operations safely
+
+    ENOENT: no such file or directory, rename 'C:\Users\chris\Code\SysMCP\src\services\eventlog\__tests__\test-store-1770585822350\mapping.json.tmp' -> 'C:\Users\chris\Code\SysMCP\src\services\eventlog\__tests__\test-store-1770585822350\mapping.json'
+
+
+
+FAIL src/graphql/__tests__/eventlog.resolver.metrics.test.ts
+  ΓùÅ Test suite failed to run
+
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:11:1 - error TS6133: 'EventLevel' is declared but its value is never read.
+
+    11 import { EventLevel } from '../../services/eventlog/types';
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:43:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    43       mockProvider.query.mockResolvedValue({
+                                ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:72:26 - error TS2339: Property 'mockRejectedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    72       mockProvider.query.mockRejectedValue(new Error('Query failed'));
+                                ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:92:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    92       mockProvider.query.mockResolvedValue({
+                                ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:130:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    130       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:164:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    164       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:192:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    192       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:224:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    224       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:243:26 - error TS2339: Property 'mockImplementation' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    243       mockProvider.query.mockImplementation(
+                                 ~~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:267:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    267       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:289:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    289       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.metrics.test.ts:354:26 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    354       mockProvider.query.mockResolvedValue({
+                                 ~~~~~~~~~~~~~~~~~
+
+FAIL src/graphql/__tests__/eventlog.resolver.anonymization.test.ts
+  ΓùÅ Test suite failed to run
+
+    src/graphql/__tests__/eventlog.resolver.anonymization.test.ts:8:1 - error TS6133: 'PiiAnonymizer' is declared but its value is never read.
+
+    8 import { PiiAnonymizer } from '../../services/eventlog/lib/src/anonymizer';
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FAIL src/graphql/__tests__/eventlog.performance.test.ts
+  ΓùÅ Test suite failed to run
+
+    src/graphql/__tests__/eventlog.performance.test.ts:15:1 - error TS6133: 'EventLevel' is declared but its value is never read.
+
+    15 import { EventLevel } from '../../services/eventlog/types';
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.performance.test.ts:141:28 - error TS2339: Property 'mockClear' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    141         mockProvider.query.mockClear();
+                                   ~~~~~~~~~
+    src/graphql/__tests__/eventlog.performance.test.ts:142:28 - error TS2339: Property 'mockResolvedValue' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    142         mockProvider.query.mockResolvedValue({
+                                   ~~~~~~~~~~~~~~~~~
+
+FAIL src/services/eventlog/__tests__/anonymization.security.test.ts
+  ΓùÅ Test suite failed to run
+
+    src/graphql/eventlog.resolver.ts:43:14 - error TS2323: Cannot redeclare exported variable 'EventLogGraphQLError'.
+
+    43 export class EventLogGraphQLError extends GraphQLError {
+                    ~~~~~~~~~~~~~~~~~~~~
+    src/graphql/eventlog.resolver.ts:493:10 - error TS2323: Cannot redeclare exported variable 'EventLogGraphQLError'.
+
+    493 export { EventLogGraphQLError, EventLogErrorCode };
+                 ~~~~~~~~~~~~~~~~~~~~
+    src/graphql/eventlog.resolver.ts:493:10 - error TS2484: Export declaration conflicts with exported declaration of 'EventLogGraphQLError'.
+
+    493 export { EventLogGraphQLError, EventLogErrorCode };
+                 ~~~~~~~~~~~~~~~~~~~~
+    src/graphql/eventlog.resolver.ts:493:32 - error TS2484: Export declaration conflicts with exported declaration of 'EventLogErrorCode'.
+
+    493 export { EventLogGraphQLError, EventLogErrorCode };
+                                       ~~~~~~~~~~~~~~~~~
+
+FAIL src/graphql/__tests__/eventlog.resolver.test.ts
+  ΓùÅ Test suite failed to run
+
+    src/graphql/__tests__/eventlog.resolver.test.ts:8:1 - error TS6133: 'EventLevel' is declared but its value is never read.
+
+    8 import { EventLevel } from '../../services/eventlog/types';
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:248:28 - error TS2339: Property 'mockClear' does not exist on type '(query: EventLogQuery) => Promise<EventLogProviderResult>'.
+
+    248         mockProvider.query.mockClear();
+                                   ~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:731:7 - error TS2304: Cannot find name 'mockProvider'.
+
+    731       mockProvider.query = jest.fn().mockResolvedValue({
+              ~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:737:71 - error TS2304: Cannot find name 'context'.
+
+    737       await eventLogsResolver(null, { logName: 'System', offset: 0 }, context);
+                                                                              ~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:739:14 - error TS2304: Cannot find name 'mockProvider'.
+
+    739       expect(mockProvider.query).toHaveBeenCalledWith(
+                     ~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:750:7 - error TS2304: Cannot find name 'mockProvider'.
+
+    750       mockProvider.query = jest.fn().mockResolvedValue({
+              ~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:756:72 - error TS2304: Cannot find name 'context'.
+
+    756       await eventLogsResolver(null, { logName: 'System', limit: 100 }, context);
+                                                                               ~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:758:14 - error TS2304: Cannot find name 'mockProvider'.
+
+    758       expect(mockProvider.query).toHaveBeenCalledWith(
+                     ~~~~~~~~~~~~
+    src/graphql/__tests__/eventlog.resolver.test.ts:768:1 - error TS1128: Declaration or statement expected.
+
+    768 });
+        ~
+    src/graphql/__tests__/eventlog.resolver.test.ts:768:2 - error TS1128: Declaration or statement expected.
+
+    768 });
+         ~
+
+FAIL src/services/eventlog/__tests__/eventlog.integration.test.ts
+  ΓùÅ Test suite failed to run
+
+    src/graphql/eventlog.resolver.ts:43:14 - error TS2323: Cannot redeclare exported variable 'EventLogGraphQLError'.
+
+    43 export class EventLogGraphQLError extends GraphQLError {
+                    ~~~~~~~~~~~~~~~~~~~~
+    src/graphql/eventlog.resolver.ts:493:10 - error TS2323: Cannot redeclare exported variable 'EventLogGraphQLError'.
+
+    493 export { EventLogGraphQLError, EventLogErrorCode };
+                 ~~~~~~~~~~~~~~~~~~~~
+    src/graphql/eventlog.resolver.ts:493:10 - error TS2484: Export declaration conflicts with exported declaration of 'EventLogGraphQLError'.
+
+    493 export { EventLogGraphQLError, EventLogErrorCode };
+                 ~~~~~~~~~~~~~~~~~~~~
+    src/graphql/eventlog.resolver.ts:493:32 - error TS2484: Export declaration conflicts with exported declaration of 'EventLogErrorCode'.
+
+    493 export { EventLogGraphQLError, EventLogErrorCode };
+                                       ~~~~~~~~~~~~~~~~~
+
+FAIL src/services/eventlog/__tests__/provider.test.ts (19.533 s)
+  ΓùÅ Console
+
+    console.warn
+      Warning: Anonymization enabled but no mappingFilePath configured. Anonymization mapping will not persist across restarts.
+
+      436 |     if (this.options.anonymize && !this.options.mappingFilePath) {
+      437 |       // Mapping persistence is optional but recommended
+    > 438 |       console.warn(
+          |               ^
+      439 |         'Warning: Anonymization enabled but no mappingFilePath configured. ' +
+      440 |         'Anonymization mapping will not persist across restarts.'
+      441 |       );
+
+      at WindowsEventLogLibrary.warn [as validateOptions] (src/services/eventlog/lib/src/windows-eventlog-lib.ts:438:15)
+      at new validateOptions (src/services/eventlog/lib/src/windows-eventlog-lib.ts:217:10)
+      at EventLogProvider.start (src/services/eventlog/provider.ts:146:22)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:172:22)
+
+  ΓùÅ EventLogProvider ΓÇ║ Lifecycle ΓÇ║ should start successfully
+
+    expect(received).resolves.not.toThrow()
+
+    Received promise rejected instead of resolved
+    Rejected to value: [OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed]
+
+      51 |
+      52 |     it('should start successfully', async () => {
+    > 53 |       await expect(provider.start()).resolves.not.toThrow();
+         |             ^
+      54 |     });
+      55 |
+      56 |     it('should stop successfully', async () => {
+
+      at expect (node_modules/expect/build/index.js:113:15)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:53:13)
+
+  ΓùÅ EventLogProvider ΓÇ║ Lifecycle ΓÇ║ should stop successfully
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:57:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Lifecycle ΓÇ║ should handle multiple stop calls gracefully
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:62:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Query Method ΓÇ║ should throw ValidationException if logName missing
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:99:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Query Method ΓÇ║ should return result with executionTimeMs
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:104:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Query Method ΓÇ║ should include queriedAt timestamp
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:110:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Metrics ΓÇ║ should track queries executed
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:120:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Metrics ΓÇ║ should track execution time
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:120:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Metrics ΓÇ║ should return metrics object
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:120:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ State Management ΓÇ║ should return state after start
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:157:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Anonymization Support ΓÇ║ should return mapping when anonymization enabled
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:172:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Error Handling ΓÇ║ should return error result for invalid log
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:181:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Error Handling ΓÇ║ should throw for validation errors
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:181:7)
+
+  ΓùÅ EventLogProvider ΓÇ║ Performance ΓÇ║ should query System log reasonably fast
+
+    OperationFailedException: Failed to start EventLog service: EventLog service healthcheck failed
+
+      158 |       this.logger.error('Failed to start EventLogProvider', { error: message });
+      159 |       this.started = false;
+    > 160 |       throw new OperationFailedException(`Failed to start EventLog service: ${message}`);
+          |             ^
+      161 |     }
+      162 |   }
+      163 |
+
+      at EventLogProvider.start (src/services/eventlog/provider.ts:160:13)
+      at Object.<anonymous> (src/services/eventlog/__tests__/provider.test.ts:199:7)
+
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\services\lifecycle.ts
+ERROR: src/services/lifecycle.ts:258:10 - error TS2484: Export declaration conflicts with exported declaration of 'ServiceLifecycleManager'.
+
+258 export { ServiceLifecycleManager };
+             ~~~~~~~~~~~~~~~~~~~~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\watcher.ts
+ERROR: src/watcher.ts:199:10 - error TS2484: Export declaration conflicts with exported declaration of 'FileWatcher'.
+
+199 export { FileWatcher };
+             ~~~~~~~~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\logger\formatters.ts
+ERROR: src/logger/formatters.ts:30:10 - error TS6133: 'containsPII' is declared but its value is never read.
+
+30 function containsPII(value: string): boolean {
+            ~~~~~~~~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\index.ts
+ERROR: src/index.ts:6:10 - error TS2305: Module '"./config"' has no exported member 'loadConfig'.
+
+6 import { loadConfig, Config } from './config';
+           ~~~~~~~~~~
+src/index.ts:182:44 - error TS2484: Export declaration conflicts with exported declaration of 'AppContext'.
+
+182 export { main, initializeApp, shutdownApp, AppContext };
+                                               ~~~~~~~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\server.ts
+ERROR: src/server.ts:79:28 - error TS7006: Parameter 'data' implicitly has an 'any' type.
+
+79       res.send = function (data) {
+                              ~~~~
+src/server.ts:86:11 - error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+
+86           this.logger.warn('HTTP request completed', {
+             ~~~~
+
+  src/server.ts:79:18
+    79       res.send = function (data) {
+                        ~~~~~~~~
+    An outer value of 'this' is shadowed by this container.
+src/server.ts:93:11 - error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+
+93           this.logger.debug('HTTP request completed', {
+             ~~~~
+
+  src/server.ts:79:18
+    79       res.send = function (data) {
+                        ~~~~~~~~
+    An outer value of 'this' is shadowed by this container.
+src/server.ts:102:34 - error TS2683: 'this' implicitly has type 'any' because it does not have a type annotation.
+
+102         return originalSend.call(this, data);
+                                     ~~~~
+
+  src/server.ts:79:18
+    79       res.send = function (data) {
+                        ~~~~~~~~
+    An outer value of 'this' is shadowed by this container.
+src/server.ts:114:30 - error TS6133: 'req' is declared but its value is never read.
+
+114     this.app.get('/health', (req: Request, res: Response) => {
+                                 ~~~
+src/server.ts:146:60 - error TS6133: 'next' is declared but its value is never read.
+
+146     this.app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+                                                               ~~~~
+src/server.ts:265:10 - error TS2484: Export declaration conflicts with exported declaration of 'Server'.
+
+265 export { Server };
+             ~~~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\graphql\resolvers.ts
+ERROR: src/graphql/resolvers.ts:133:45 - error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'string'.
+
+133           config: input.config ? JSON.parse(input.config) : undefined,
+                                                ~~~~~~~~~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\config\index.ts
+ERROR: src/config/index.ts:39:38 - error TS2339: Property 'code' does not exist on type 'Error'.
+
+39     if (result.error && result.error.code !== 'ENOENT') {
+                                        ~~~~
+STACK: 
+Failed to collect coverage from C:\Users\chris\Code\SysMCP\src\graphql\eventlog.resolver.ts
+ERROR: src/graphql/eventlog.resolver.ts:43:14 - error TS2323: Cannot redeclare exported variable 'EventLogGraphQLError'.
+
+43 export class EventLogGraphQLError extends GraphQLError {
+                ~~~~~~~~~~~~~~~~~~~~
+src/graphql/eventlog.resolver.ts:493:10 - error TS2323: Cannot redeclare exported variable 'EventLogGraphQLError'.
+
+493 export { EventLogGraphQLError, EventLogErrorCode };
+             ~~~~~~~~~~~~~~~~~~~~
+src/graphql/eventlog.resolver.ts:493:10 - error TS2484: Export declaration conflicts with exported declaration of 'EventLogGraphQLError'.
+
+493 export { EventLogGraphQLError, EventLogErrorCode };
+             ~~~~~~~~~~~~~~~~~~~~
+src/graphql/eventlog.resolver.ts:493:32 - error TS2484: Export declaration conflicts with exported declaration of 'EventLogErrorCode'.
+
+493 export { EventLogGraphQLError, EventLogErrorCode };
+                                   ~~~~~~~~~~~~~~~~~
+STACK: 
+---------------------------|---------|----------|---------|---------|-----------------------------------------------------------
+File                       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                         
+---------------------------|---------|----------|---------|---------|-----------------------------------------------------------
+All files                  |   35.86 |    28.85 |      44 |   35.88 |                                                           
+ graphql                   |       0 |        0 |       0 |       0 |                                                           
+  cursor.ts                |       0 |        0 |       0 |       0 | 27-81                                                     
+  schema.ts                |       0 |      100 |     100 |       0 | 5                                                         
+  types.ts                 |       0 |        0 |       0 |       0 | 8-13                                                      
+ logger                    |       0 |        0 |       0 |       0 |                                                           
+  index.ts                 |       0 |        0 |       0 |       0 | 6-155                                                     
+ services                  |       0 |        0 |       0 |       0 |                                                           
+  registry.ts              |       0 |        0 |       0 |       0 | 12-115                                                    
+ services/eventlog         |   82.05 |    73.83 |   98.11 |    82.4 |                                                           
+  anonymization-store.ts   |   91.66 |       85 |     100 |   93.61 | 87-88,108                                                 
+  config.ts                |     100 |    84.21 |     100 |     100 | 140-158                                                   
+  metrics.ts               |     100 |      100 |     100 |     100 |                                                           
+  provider.ts              |   64.15 |     55.1 |    90.9 |   64.15 | 35-36,125-126,154-155,176-187,218,225-227,264-311,342,392 
+  types.ts                 |     100 |      100 |     100 |     100 |                                                           
+ services/eventlog/lib/src |   22.26 |    13.33 |   24.56 |   21.94 |                                                           
+  anonymizer.ts            |   10.76 |        0 |    4.54 |   10.93 | 135-429                                                   
+  eventlog-adapter.ts      |    3.57 |        0 |       0 |    3.84 | 29-142                                                    
+  index.ts                 |    14.7 |        0 |      25 |      13 | 133-210,227,243-422                                       
+  powershell-executor.ts   |   64.51 |    54.54 |      75 |   64.51 | 46-47,59-60,69,99-106                                     
+  windows-eventlog-lib.ts  |   35.08 |    33.96 |      40 |   35.08 | 263-305,334-335,342-382,413,429,433,453-491               
+ services/eventlog/poc     |       0 |        0 |       0 |       0 |                                                           
+  powershell-poc.ts        |       0 |        0 |       0 |       0 | 16-311                                                    
+---------------------------|---------|----------|---------|---------|-----------------------------------------------------------
+Jest: "global" coverage threshold for statements (80%) not met: 35.86%
+Jest: "global" coverage threshold for branches (80%) not met: 28.85%
+Jest: "global" coverage threshold for lines (80%) not met: 35.88%
+Jest: "global" coverage threshold for functions (80%) not met: 44%
+Test Suites: 9 failed, 2 passed, 11 total
+Tests:       19 failed, 116 passed, 135 total
+Snapshots:   0 total
+Time:        26.388 s
+Ran all test suites matching /services\\eventlog\\__tests__|graphql.*eventlog.*test/i.

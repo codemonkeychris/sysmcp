@@ -254,5 +254,3 @@ export function createLifecycleManager(
 } {
   return new ServiceLifecycleManagerImpl(registry, logger);
 }
-
-export { ServiceLifecycleManager };

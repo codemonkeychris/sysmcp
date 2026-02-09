@@ -14,6 +14,7 @@ import {
   ServiceOperationResult,
   ServiceStateEnum,
 } from './types';
+import { eventlogResolver } from './eventlog.resolver';
 
 /**
  * Convert backend Service to GraphQL Service type
@@ -95,6 +96,8 @@ export const resolvers = {
         throw new Error('Failed to retrieve health status');
       }
     },
+
+    ...eventlogResolver.Query,
   },
 
   Mutation: {
@@ -130,7 +133,7 @@ export const resolvers = {
           name: input.name,
           type: input.type,
           requiredPermissions: input.requiredPermissions,
-          config: input.config ? JSON.parse(input.config) : undefined,
+          config: input.config ? JSON.parse(input.config as unknown as string) : undefined,
         });
 
         const service = context.registry.get(input.name);
@@ -248,3 +251,20 @@ export const resolvers = {
     },
   },
 };
+
+/**
+ * Create resolvers with context
+ */
+export function createResolvers(
+  _registry?: ServiceRegistry,
+  _logger?: Logger
+): any {
+  return {
+    Query: {
+      ...resolvers.Query,
+    },
+    Mutation: {
+      ...resolvers.Mutation,
+    },
+  };
+}

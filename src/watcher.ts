@@ -195,5 +195,3 @@ export function createFileWatcher(
 ): FileWatcher {
   return new FileWatcherImpl(logger, config, registry, lifecycleManager);
 }
-
-export { FileWatcher };

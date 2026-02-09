@@ -9,7 +9,13 @@
       "Bash(ls -la \"C:\\\\Users\\\\chris\\\\Code\\\\SysMCP\\\\.github\"\" && echo \"---\" && ls -la \"C:UserschrisCodeSysMCP\"\")",
       "WebFetch(domain:www.swift.org)",
       "WebFetch(domain:github.com)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(echo:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm test:*)",
+      "Bash(timeout:*)"
     ]
   }
 }

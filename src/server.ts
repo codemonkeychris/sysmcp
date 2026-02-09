@@ -4,9 +4,13 @@
  */
 
 import express, { Express, Request, Response, NextFunction } from 'express';
+import { ApolloServer } from 'apollo-server-express';
 import { Logger } from './logger';
 import { ServiceRegistry } from './services/types';
 import { Config } from './config';
+import { typeDefs } from './graphql/schema';
+import { createResolvers } from './graphql/resolvers';
+import { EventLogProvider } from './services/eventlog/provider';
 
 /**
  * Server instance interface
@@ -45,6 +49,8 @@ class ServerImpl implements Server {
   private config: Config;
   private registry?: ServiceRegistry;
   private httpServer?: ReturnType<Express['listen']>;
+  private apolloServer?: ApolloServer;
+  private eventlogProvider?: EventLogProvider;
   private startTime: number = Date.now();
   private isShuttingDown = false;
 
@@ -55,7 +61,6 @@ class ServerImpl implements Server {
     this.registry = registry;
 
     this.setupMiddleware();
-    this.setupRoutes();
     this.setupErrorHandling();
   }
 
@@ -76,21 +81,23 @@ class ServerImpl implements Server {
 
       // Log response when it's sent
       const originalSend = res.send;
-      res.send = function (data) {
+      const logger = this.logger;
+      
+      res.send = function (data: any) {
         const duration = Date.now() - context.startTime;
         const statusCode = res.statusCode;
 
         // Log request/response
         const logLevel = statusCode >= 400 ? 'warn' : 'info';
         if (logLevel === 'warn') {
-          this.logger.warn('HTTP request completed', {
+          logger.warn('HTTP request completed', {
             method: context.method,
             path: context.path,
             status: statusCode,
             duration: `${duration}ms`,
           });
         } else {
-          this.logger.debug('HTTP request completed', {
+          logger.debug('HTTP request completed', {
             method: context.method,
             path: context.path,
             status: statusCode,
@@ -98,9 +105,9 @@ class ServerImpl implements Server {
           });
         }
 
-        // Call original send
+        // Call original send with correct context
         return originalSend.call(this, data);
-      }.bind(this);
+      };
 
       next();
     });
@@ -109,9 +116,48 @@ class ServerImpl implements Server {
   /**
    * Set up routes
    */
-  private setupRoutes(): void {
+  private async setupRoutes(): Promise<void> {
+    // Initialize EventLog provider
+    this.eventlogProvider = new EventLogProvider(this.logger, {
+      enabled: true,
+      maxResults: 1000,
+      timeoutMs: 30000,
+      anonymize: false,
+    });
+
+    // Start the EventLog provider
+    try {
+      await this.eventlogProvider.start();
+      this.logger.info('EventLog provider started');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Failed to start EventLog provider', { error: message });
+    }
+
+    // Initialize Apollo Server for GraphQL
+    this.apolloServer = new ApolloServer({
+      typeDefs,
+      resolvers: createResolvers(this.registry, this.logger),
+      introspection: true,
+      context: async () => ({
+        registry: this.registry,
+        logger: this.logger,
+        startTime: this.startTime,
+        eventlogProvider: this.eventlogProvider,
+        eventlogAnonymizer: undefined,
+        eventlogMetricsCollector: undefined,
+        eventlogMappingPath: undefined,
+      }),
+    });
+
+    // Start Apollo Server
+    await this.apolloServer.start();
+
+    // Mount Apollo Server to /graphql endpoint using applyMiddleware
+    (this.apolloServer as any).applyMiddleware({ app: this.app, path: '/graphql' });
+
     // Health check endpoint
-    this.app.get('/health', (req: Request, res: Response) => {
+    this.app.get('/health', (_req: Request, res: Response) => {
       const uptime = Math.floor((Date.now() - this.startTime) / 1000);
       const allServices = this.registry?.getAll() || [];
       const errorServices = allServices.filter((s) => s.state === 'error');
@@ -143,7 +189,7 @@ class ServerImpl implements Server {
    * Set up error handling middleware
    */
   private setupErrorHandling(): void {
-    this.app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    this.app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
       this.logger.error('Unhandled error', {
         error: err.message,
         path: req.path,
@@ -161,6 +207,9 @@ class ServerImpl implements Server {
    * Start the HTTP server
    */
   async start(): Promise<void> {
+    // Set up routes (including GraphQL)
+    await this.setupRoutes();
+
     return new Promise((resolve, reject) => {
       try {
         this.httpServer = this.app.listen(this.config.port, () => {
@@ -200,6 +249,28 @@ class ServerImpl implements Server {
 
     this.isShuttingDown = true;
     this.logger.info('Starting graceful shutdown');
+
+    // Stop EventLog provider if running
+    if (this.eventlogProvider) {
+      try {
+        await this.eventlogProvider.stop();
+        this.logger.debug('EventLog provider stopped');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('Error stopping EventLog provider', { error: message });
+      }
+    }
+
+    // Stop Apollo Server if running
+    if (this.apolloServer) {
+      try {
+        await this.apolloServer.stop();
+        this.logger.debug('Apollo Server stopped');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('Error stopping Apollo Server', { error: message });
+      }
+    }
 
     return new Promise((resolve) => {
       // Set 5-second timeout for graceful shutdown
@@ -261,5 +332,3 @@ export function createServer(
 ): Server {
   return new ServerImpl(logger, config, registry);
 }
-
-export { Server };

@@ -26,8 +26,10 @@ const PII_PATTERNS = {
 
 /**
  * Check if a string contains a value that matches PII patterns
+ * @internal Not currently used but kept for future PII detection logic
  */
-function containsPII(value: string): boolean {
+// @ts-ignore - intentionally unused
+function _containsPII(value: string): boolean {
   if (typeof value !== 'string') return false;
   
   return (

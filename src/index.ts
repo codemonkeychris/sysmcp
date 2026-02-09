@@ -3,7 +3,7 @@
  * Orchestrates startup of all components in correct order
  */
 
-import { loadConfig, Config } from './config';
+import { createConfig, Config } from './config';
 import { createLoggerFromConfig, Logger } from './logger';
 import { createServer, Server } from './server';
 import { createRegistry, ServiceRegistry } from './services/registry';
@@ -31,7 +31,7 @@ async function initializeApp(): Promise<AppContext> {
 
   // Step 1: Load environment variables from .env
   console.log('Loading environment configuration...');
-  const config = loadConfig();
+  const config = createConfig();
 
   // Step 2: Validate configuration (exit with error if invalid)
   console.log(`Configuration loaded: NODE_ENV=${config.nodeEnv}, PORT=${config.port}`);
@@ -178,8 +178,8 @@ async function main(): Promise<void> {
   }
 }
 
-// Export context and main function for testing
-export { main, initializeApp, shutdownApp, AppContext };
+// Export main functions for testing
+export { main, initializeApp, shutdownApp };
 
 // Run main if this is the entry point
 if (require.main === module) {
