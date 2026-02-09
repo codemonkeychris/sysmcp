@@ -145,10 +145,15 @@ export class EventLogProvider {
 
       this.library = new WindowsEventLogLibrary(libConfig);
 
-      // Perform healthcheck
-      const healthy = await this.healthcheck();
-      if (!healthy) {
-        throw new Error('EventLog service healthcheck failed');
+      // Perform healthcheck (log warning but don't block startup)
+      try {
+        const healthy = await this.healthcheck();
+        if (!healthy) {
+          this.logger.warn('EventLog service healthcheck failed - proceeding with unverified service');
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('EventLog healthcheck error - proceeding with unverified service', { error: message });
       }
 
       this.started = true;
