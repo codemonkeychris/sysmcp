@@ -18,6 +18,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 /**
  * Represents a raw event log entry before anonymization
@@ -106,6 +107,12 @@ export class PiiAnonymizer {
   };
 
   /**
+   * Local machine name - detected on initialization
+   * This is the name of the machine running the service
+   */
+  private localMachineName: string;
+
+  /**
    * Regular expressions for PII pattern matching
    */
   private static readonly PATTERNS = {
@@ -140,6 +147,9 @@ export class PiiAnonymizer {
         paths: new Map(persistedMapping.paths)
       };
     }
+
+    // Detect and store local machine name for anonymization
+    this.localMachineName = os.hostname().toUpperCase();
   }
 
   /**
@@ -194,6 +204,17 @@ export class PiiAnonymizer {
     }
 
     return result;
+  }
+
+  /**
+   * Get the local machine name being anonymized
+   * 
+   * Useful for testing and debugging to verify which machine name is being anonymized.
+   * 
+   * @returns The local machine name (uppercase)
+   */
+  getLocalMachineName(): string {
+    return this.localMachineName;
   }
 
   /**
@@ -305,6 +326,9 @@ export class PiiAnonymizer {
 
     let result = value;
 
+    // Anonymize local machine name first (highest priority)
+    result = this.anonymizeLocalMachineName(result);
+
     // Anonymize usernames (DOMAIN\username)
     result = this.anonymizeUsernames(result);
 
@@ -321,6 +345,39 @@ export class PiiAnonymizer {
     result = this.anonymizeFilePaths(result);
 
     return result;
+  }
+
+  /**
+   * Anonymize the local machine name
+   * 
+   * Replaces the local machine name (hostname) with a consistent anonymized token.
+   * This is critical for privacy as the machine name is a strong identifier.
+   * Matches case-insensitively but preserves the capitalization pattern where possible.
+   * 
+   * Examples:
+   * - "WORKSTATION1" -> "[ANON_COMPUTER_abc123]"
+   * - "workstation1" -> "[ANON_COMPUTER_abc123]" (same token)
+   * - "WORKSTATION1 logged in" -> "[ANON_COMPUTER_abc123] logged in"
+   * 
+   * @param value - String containing potential local machine name
+   * @returns String with local machine name anonymized
+   * @private
+   */
+  private anonymizeLocalMachineName(value: string): string {
+    // Create case-insensitive regex for the local machine name
+    const escapedName = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const machineNameRegex = new RegExp(`\\b${escapedName}\\b`, 'gi');
+
+    // Check if the local machine name appears in the value
+    if (machineNameRegex.test(value)) {
+      // Reset regex (global flag resets position on test)
+      machineNameRegex.lastIndex = 0;
+      return value.replace(machineNameRegex, (match) => {
+        return this.getOrCreateToken(this.localMachineName, 'computerNames', 'ANON_COMPUTER');
+      });
+    }
+
+    return value;
   }
 
   /**
