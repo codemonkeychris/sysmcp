@@ -256,8 +256,8 @@ export const resolvers = {
  * Create resolvers with context
  */
 export function createResolvers(
-  registry?: ServiceRegistry,
-  logger?: Logger
+  _registry?: ServiceRegistry,
+  _logger?: Logger
 ): any {
   return {
     Query: {

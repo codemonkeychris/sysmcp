@@ -169,16 +169,16 @@ export class EventLogMcpService implements IService {
       }
     `;
 
-    const variables = {
+    const variables: Record<string, unknown> = {
       logName: args.logName,
       limit: args.limit ? Number(args.limit) : 100,
       offset: args.offset ? Number(args.offset) : 0,
-      ...(args.minLevel && { minLevel: args.minLevel }),
-      ...(args.source && { source: args.source }),
-      ...(args.startTime && { startTime: args.startTime }),
-      ...(args.endTime && { endTime: args.endTime }),
-      ...(args.messageContains && { messageContains: args.messageContains }),
     };
+    if (args.minLevel) variables.minLevel = args.minLevel;
+    if (args.source) variables.source = args.source;
+    if (args.startTime) variables.startTime = args.startTime;
+    if (args.endTime) variables.endTime = args.endTime;
+    if (args.messageContains) variables.messageContains = args.messageContains;
 
     try {
       const requestBody = {

@@ -168,12 +168,27 @@ export class PiiAnonymizer {
    * // }
    * ```
    */
+  /**
+   * Fields that should never be anonymized (enum values, metadata, identifiers)
+   */
+  private static readonly SAFE_FIELDS = new Set([
+    'logName',
+    'levelDisplayName',
+    'level',
+    'providerName',
+    'source',
+    'eventId',
+    'id',
+    'timeCreated',
+    'timestamp',
+  ]);
+
   anonymizeEntry(entry: RawEventLogEntry): AnonymizedEventLogEntry {
     const result: AnonymizedEventLogEntry = { ...entry };
 
-    // Anonymize each string field
+    // Anonymize only PII-bearing string fields, skip safe fields
     for (const [key, value] of Object.entries(result)) {
-      if (typeof value === 'string') {
+      if (typeof value === 'string' && !PiiAnonymizer.SAFE_FIELDS.has(key)) {
         result[key] = this.anonymizeString(value);
       }
     }
@@ -332,13 +347,33 @@ export class PiiAnonymizer {
    * @returns String with computer names anonymized
    * @private
    */
+  /**
+   * Common words that should not be treated as computer names
+   */
+  private static readonly COMPUTER_NAME_EXCLUSIONS = new Set([
+    'INFORMATION', 'WARNING', 'ERROR', 'CRITICAL', 'VERBOSE', 'DEBUG',
+    'INFO', 'WARN', 'FATAL', 'TRACE', 'AUDIT',
+    'SYSTEM', 'APPLICATION', 'SECURITY', 'SETUP',
+    'TRUE', 'FALSE', 'NULL', 'NONE', 'UNKNOWN',
+    'THE', 'AND', 'FOR', 'NOT', 'ALL', 'ARE', 'BUT', 'WAS',
+    'SUCCESS', 'FAILURE', 'FAILED', 'STARTED', 'STOPPED', 'RUNNING',
+    'GET', 'SET', 'PUT', 'POST', 'DELETE', 'PATCH',
+    'TCP', 'UDP', 'HTTP', 'HTTPS', 'DNS', 'DHCP', 'RPC', 'COM',
+  ]);
+
   private anonymizeComputerNames(value: string): string {
-    // Match computer names - be careful not to anonymize every word
-    // Look for patterns that look like computer names: all-caps or mixed case
-    return value.replace(/\b([A-Z][A-Z0-9]{0,14})\b/g, (match) => {
-      // Only anonymize if it looks like a computer name (all caps or specific pattern)
+    // Match computer names - require at least one hyphen or digit mixed with letters
+    // to distinguish from common English words. Pure all-caps words are too ambiguous.
+    return value.replace(/\b([A-Z][A-Z0-9-]{1,14})\b/g, (match) => {
       if (match === match.toUpperCase() && match.length > 2) {
-        return this.getOrCreateToken(match, 'computerNames', 'ANON_COMPUTER');
+        // Skip common words that are not computer names
+        if (PiiAnonymizer.COMPUTER_NAME_EXCLUSIONS.has(match)) {
+          return match;
+        }
+        // Require at least one digit or hyphen to look like a computer name
+        if (/[\d-]/.test(match)) {
+          return this.getOrCreateToken(match, 'computerNames', 'ANON_COMPUTER');
+        }
       }
       return match;
     });

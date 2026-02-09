@@ -89,6 +89,44 @@ interface ResolverContext {
 }
 
 /**
+ * Extract a string value from a field that may be a plain string or a
+ * Windows object (e.g. SID: { BinaryLength, AccountDomainSid, Value }).
+ */
+function extractStringValue(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && 'Value' in (value as Record<string, unknown>)) {
+    return String((value as Record<string, unknown>).Value);
+  }
+  return String(value);
+}
+
+/**
+ * Map Windows Event Log level display names to GraphQL EventLevel enum values.
+ * Windows uses "Information", "Warning", "Error", "Critical", "Verbose"
+ * while the schema uses INFO, WARNING, ERROR, VERBOSE, DEBUG.
+ */
+const LEVEL_MAP: Record<string, EventLevel> = {
+  'INFORMATION': EventLevel.INFO,
+  'INFO': EventLevel.INFO,
+  'WARNING': EventLevel.WARNING,
+  'WARN': EventLevel.WARNING,
+  'ERROR': EventLevel.ERROR,
+  'CRITICAL': EventLevel.ERROR,
+  'VERBOSE': EventLevel.VERBOSE,
+  'DEBUG': EventLevel.DEBUG,
+};
+
+/**
+ * Convert a raw level string to the EventLevel enum
+ */
+function normalizeEventLevel(level?: string): EventLevel {
+  if (!level) return EventLevel.INFO;
+  const upper = level.toUpperCase();
+  return LEVEL_MAP[upper] ?? EventLevel.INFO;
+}
+
+/**
  * Convert EventLevel string to enum
  */
 function parseEventLevel(level?: string): EventLevel | undefined {
@@ -101,7 +139,8 @@ function parseEventLevel(level?: string): EventLevel | undefined {
     return upper as EventLevel;
   }
 
-  return undefined;
+  // Also check mapped values (e.g. "Information" → INFO)
+  return LEVEL_MAP[upper];
 }
 
 /**
@@ -256,41 +295,37 @@ export async function eventLogsResolver(
       }
     });
 
-    // Initialize anonymizer if needed
+    // Initialize anonymizer only if explicitly configured
     let anonymizer = context.eventlogAnonymizer;
-    if (!anonymizer) {
-      // Try to load persisted mapping if path provided
-      if (context.eventlogMappingPath) {
-        try {
-          const mapping = await PiiAnonymizer.loadMapping(context.eventlogMappingPath);
-          anonymizer = new PiiAnonymizer(mapping);
-          logger.debug('Loaded persisted anonymization mapping');
-        } catch (error) {
-          // If mapping doesn't exist or is corrupt, start fresh
-          logger.debug('Starting with fresh anonymization mapping');
-          anonymizer = new PiiAnonymizer();
-        }
-      } else {
+    if (!anonymizer && context.eventlogMappingPath) {
+      // Only create anonymizer if a mapping path is explicitly configured
+      try {
+        const mapping = await PiiAnonymizer.loadMapping(context.eventlogMappingPath);
+        anonymizer = new PiiAnonymizer(mapping);
+        logger.debug('Loaded persisted anonymization mapping');
+      } catch (error) {
+        // If mapping doesn't exist or is corrupt, start fresh
+        logger.debug('Starting with fresh anonymization mapping');
         anonymizer = new PiiAnonymizer();
       }
     }
 
-    // Apply anonymization to all entries
+    // Map entries, applying anonymization only if an anonymizer is configured
     const anonymizedEntries = result.entries.map((entry: any) => {
-      const anonEntry = anonymizer!.anonymizeEntry(entry);
+      const anonEntry = anonymizer ? anonymizer.anonymizeEntry(entry) : entry;
       return {
         id: anonEntry.id ?? 0,
         timestamp: anonEntry.timeCreated || anonEntry.timestamp || new Date(),
-        level: (anonEntry.levelDisplayName || anonEntry.level || 'INFO').toUpperCase() as EventLevel,
+        level: normalizeEventLevel(anonEntry.levelDisplayName || anonEntry.level),
         source: anonEntry.providerName || anonEntry.source || 'Unknown',
         eventId: anonEntry.eventId ?? 0,
-        username: anonEntry.userId || anonEntry.username,
-        computername: anonEntry.computerName || anonEntry.computername,
+        username: extractStringValue(anonEntry.userId) || extractStringValue(anonEntry.username),
+        computername: extractStringValue(anonEntry.computerName) || extractStringValue(anonEntry.computername),
         message: anonEntry.message || ''
       } as EventLogResult['entries'][number];
     });
 
-    // Persist anonymization mapping if path provided
+    // Persist anonymization mapping if path provided and anonymizer active
     if (context.eventlogMappingPath && anonymizer) {
       try {
         await anonymizer.persistMapping(context.eventlogMappingPath);
