@@ -124,7 +124,7 @@ class ServerImpl implements Server {
         registry: this.registry,
         logger: this.logger,
         startTime: this.startTime,
-        eventlogProvider: undefined, // Can be added later if needed
+        eventlogProvider: undefined,
         eventlogAnonymizer: undefined,
         eventlogMetricsCollector: undefined,
         eventlogMappingPath: undefined,
@@ -134,8 +134,8 @@ class ServerImpl implements Server {
     // Start Apollo Server
     await this.apolloServer.start();
 
-    // Mount Apollo Server to /graphql endpoint
-    this.apolloServer.applyMiddleware({ app: this.app, path: '/graphql' });
+    // Mount Apollo Server to /graphql endpoint using applyMiddleware
+    (this.apolloServer as any).applyMiddleware({ app: this.app, path: '/graphql' });
 
     // Health check endpoint
     this.app.get('/health', (_req: Request, res: Response) => {
