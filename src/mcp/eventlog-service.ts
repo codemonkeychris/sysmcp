@@ -92,7 +92,10 @@ export class EventLogMcpService implements IService {
   }
 
   private async queryEventLog(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-    const query = `
+    // Build query dynamically to avoid null parameters
+    const hasFilters = args.minLevel || args.source || args.startTime || args.endTime || args.messageContains;
+    
+    const query = hasFilters ? `
       query QueryEventLog(
         $logName: String!
         $limit: Int
@@ -113,6 +116,33 @@ export class EventLogMcpService implements IService {
           endTime: $endTime
           messageContains: $messageContains
         ) {
+          entries {
+            id
+            level
+            source
+            eventId
+            timestamp
+            message
+            computername
+            username
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+          totalCount
+          metrics {
+            queryCount
+            responseDurationMs
+            resultsReturned
+          }
+        }
+      }
+    ` : `
+      query QueryEventLog($logName: String!, $limit: Int, $offset: Int) {
+        eventLogs(logName: $logName, limit: $limit, offset: $offset) {
           entries {
             id
             level
