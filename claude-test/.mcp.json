@@ -5,7 +5,7 @@
       "args": ["C:\\Users\\chris\\Code\\SysMCP\\dist\\mcp\\index.js"],
       "env": {
         "LOG_LEVEL": "debug",
-        "EVENTLOG_API_URL": "http://localhost:4000/graphql"
+        "EVENTLOG_API_URL": "http://localhost:3000/graphql"
       }
     }
   }

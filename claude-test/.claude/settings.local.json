@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "mcp__sysmcp__test_hello",
-      "mcp__sysmcp__eventlog_query"
+      "mcp__sysmcp__eventlog_query",
+      "Bash(curl:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -97,39 +97,43 @@ export class EventLogMcpService implements IService {
         $logName: String!
         $limit: Int
         $offset: Int
-        $minLevel: String
+        $minLevel: EventLevel
         $source: String
-        $startTime: DateTime
-        $endTime: DateTime
+        $startTime: String
+        $endTime: String
+        $messageContains: String
       ) {
-        eventLog {
-          query(
-            logName: $logName
-            limit: $limit
-            offset: $offset
-            minLevel: $minLevel
-            source: $source
-            startTime: $startTime
-            endTime: $endTime
-          ) {
-            success
-            events {
-              id
-              logName
-              level
-              source
-              eventId
-              timeGenerated
-              message
-              computerName
-              userName
-            }
-            total
-            hasMore
-            errors {
-              code
-              message
-            }
+        eventLogs(
+          logName: $logName
+          limit: $limit
+          offset: $offset
+          minLevel: $minLevel
+          source: $source
+          startTime: $startTime
+          endTime: $endTime
+          messageContains: $messageContains
+        ) {
+          entries {
+            id
+            level
+            source
+            eventId
+            timestamp
+            message
+            computername
+            username
+          }
+          pageInfo {
+            hasNextPage
+            hasPreviousPage
+            startCursor
+            endCursor
+          }
+          totalCount
+          metrics {
+            queryCount
+            responseDurationMs
+            resultsReturned
           }
         }
       }
@@ -143,6 +147,7 @@ export class EventLogMcpService implements IService {
       source: args.source,
       startTime: args.startTime,
       endTime: args.endTime,
+      messageContains: args.messageContains,
     };
 
     try {
@@ -172,7 +177,7 @@ export class EventLogMcpService implements IService {
         };
       }
 
-      const result = json.data?.eventLog?.query;
+      const result = json.data?.eventLogs;
       if (!result) {
         return {
           success: false,
@@ -182,23 +187,15 @@ export class EventLogMcpService implements IService {
         };
       }
 
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            message: result.errors?.[0]?.message || 'EventLog query failed',
-          },
-        };
-      }
-
       return {
         success: true,
         data: {
           logName: args.logName,
-          events: result.events,
-          total: result.total,
-          hasMore: result.hasMore,
-          returned: result.events?.length || 0,
+          entries: result.entries || [],
+          totalCount: result.totalCount || 0,
+          pageInfo: result.pageInfo,
+          metrics: result.metrics,
+          returned: result.entries?.length || 0,
         },
       };
     } catch (error) {
@@ -209,83 +206,18 @@ export class EventLogMcpService implements IService {
   }
 
   private async listEventLogs(): Promise<ToolExecutionResult> {
-    const query = `
-      query ListEventLogs {
-        eventLog {
-          listLogs {
-            success
-            logs {
-              name
-              recordCount
-              maximumSize
-              retention
-            }
-            errors {
-              code
-              message
-            }
-          }
-        }
-      }
-    `;
-
-    try {
-      const response = await fetch(this.graphqlUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const json = await response.json() as any;
-
-      if (json.errors) {
-        return {
-          success: false,
-          error: {
-            message: `GraphQL error: ${json.errors.map((e: any) => e.message).join(', ')}`,
-          },
-        };
-      }
-
-      const result = json.data?.eventLog?.listLogs;
-      if (!result) {
-        return {
-          success: false,
-          error: {
-            message: 'No data returned from EventLog API',
-          },
-        };
-      }
-
-      if (!result.success) {
-        return {
-          success: false,
-          error: {
-            message: result.errors?.[0]?.message || 'EventLog list failed',
-          },
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          logs: result.logs,
-          count: result.logs?.length || 0,
-        },
-      };
-    } catch (error) {
-      throw new Error(
-        `Failed to query EventLog API at ${this.graphqlUrl}: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    // Return information about common Windows event logs
+    return {
+      success: true,
+      data: {
+        logs: [
+          { name: 'System', description: 'System events' },
+          { name: 'Application', description: 'Application events' },
+          { name: 'Security', description: 'Security events (requires admin)' },
+        ],
+        message: 'Use eventlog_query with one of these log names to query events',
+      },
+    };
   }
 
   enable(): void {
