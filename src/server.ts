@@ -76,21 +76,23 @@ class ServerImpl implements Server {
 
       // Log response when it's sent
       const originalSend = res.send;
-      res.send = function (this: any, data: any) {
+      const logger = this.logger;
+      
+      res.send = function (data: any) {
         const duration = Date.now() - context.startTime;
         const statusCode = res.statusCode;
 
         // Log request/response
         const logLevel = statusCode >= 400 ? 'warn' : 'info';
         if (logLevel === 'warn') {
-          this.logger.warn('HTTP request completed', {
+          logger.warn('HTTP request completed', {
             method: context.method,
             path: context.path,
             status: statusCode,
             duration: `${duration}ms`,
           });
         } else {
-          this.logger.debug('HTTP request completed', {
+          logger.debug('HTTP request completed', {
             method: context.method,
             path: context.path,
             status: statusCode,
@@ -98,9 +100,9 @@ class ServerImpl implements Server {
           });
         }
 
-        // Call original send
+        // Call original send with correct context
         return originalSend.call(this, data);
-      }.bind(this);
+      };
 
       next();
     });
