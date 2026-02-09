@@ -141,25 +141,31 @@ export class EventLogMcpService implements IService {
 
     const variables = {
       logName: args.logName,
-      limit: args.limit || 100,
-      offset: args.offset || 0,
-      minLevel: args.minLevel,
-      source: args.source,
-      startTime: args.startTime,
-      endTime: args.endTime,
-      messageContains: args.messageContains,
+      limit: args.limit ? Number(args.limit) : 100,
+      offset: args.offset ? Number(args.offset) : 0,
+      ...(args.minLevel && { minLevel: args.minLevel }),
+      ...(args.source && { source: args.source }),
+      ...(args.startTime && { startTime: args.startTime }),
+      ...(args.endTime && { endTime: args.endTime }),
+      ...(args.messageContains && { messageContains: args.messageContains }),
     };
 
     try {
+      const requestBody = {
+        query,
+        variables,
+      };
+      console.error('[EventLog MCP] Sending GraphQL request:', {
+        url: this.graphqlUrl,
+        variables,
+      });
+
       const response = await fetch(this.graphqlUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query,
-          variables,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
