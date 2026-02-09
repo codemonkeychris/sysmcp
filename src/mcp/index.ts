@@ -38,7 +38,7 @@ async function main() {
     const protocolHandler = new ProtocolHandler();
     logger.info('Protocol handler initialized');
 
-    // Register tool handlers
+    // Register tool handlers BEFORE starting
     protocolHandler.registerHandler('tools/list', async () => {
       logger.info('Handling tools/list request');
       const tools = toolExecutor.getTools();
@@ -51,10 +51,14 @@ async function main() {
       return await toolExecutor.executeTool(params);
     });
 
+    protocolHandler.registerHandler('resources/list', async () => {
+      return { resources: [] };
+    });
+
     logger.info('Tool handlers registered');
 
     // Start the protocol handler (listens on stdin, writes to stdout)
-    await protocolHandler.start();
+    protocolHandler.start();
     
   } catch (error) {
     logger.error(`Failed to start MCP server: ${error}`);

@@ -121,21 +121,12 @@ export class ProtocolHandler {
    * Start listening for messages
    */
   start(): void {
-    // Register default handlers
+    // Register initialize handler (required by MCP protocol)
     this.registerHandler('initialize', (params, id) =>
       this.handleInitialize(params, id)
     );
 
-    // Register tools/list handler (will be overridden by service manager)
-    this.registerHandler('tools/list', async () => {
-      return { tools: [] };
-    });
-
-    // Register resources/list handler (stub for now)
-    this.registerHandler('resources/list', async () => {
-      return { resources: [] };
-    });
-
+    // Setup readline listener (callers must register tools/list and tools/call handlers)
     this.readline.on('line', (line: string) => {
       this.handleLine(line);
     });
