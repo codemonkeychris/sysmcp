@@ -10,14 +10,14 @@
 import { ProtocolHandler } from './protocol-handler';
 import { ServiceManager } from './service-manager';
 import { ToolExecutor } from './tool-executor';
-import { StubTestService } from './stub-service';
+import { EventLogMcpService } from './eventlog-service';
 
 const logger = {
   info: (msg: string) => console.error(`[INFO] ${msg}`),
   error: (msg: string) => console.error(`[ERROR] ${msg}`),
 };
 
-async function main() {
+function main() {
   try {
     logger.info('Starting MCP Server');
 
@@ -25,10 +25,12 @@ async function main() {
     const serviceManager = new ServiceManager();
     logger.info('Service manager initialized');
 
-    // Register test service for now
-    const testService = new StubTestService();
-    serviceManager.registerService(testService);
-    logger.info('Test service registered');
+    // Register EventLog service
+    const eventLogService = new EventLogMcpService(
+      process.env.EVENTLOG_API_URL || 'http://localhost:4000/graphql'
+    );
+    serviceManager.registerService(eventLogService);
+    logger.info('EventLog service registered');
 
     // Initialize tool executor
     const toolExecutor = new ToolExecutor(serviceManager);
@@ -59,6 +61,7 @@ async function main() {
 
     // Start the protocol handler (listens on stdin, writes to stdout)
     protocolHandler.start();
+    logger.info('MCP Server ready, listening on stdin');
     
   } catch (error) {
     logger.error(`Failed to start MCP server: ${error}`);
