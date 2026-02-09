@@ -130,7 +130,7 @@ export const resolvers = {
           name: input.name,
           type: input.type,
           requiredPermissions: input.requiredPermissions,
-          config: input.config ? JSON.parse(input.config) : undefined,
+          config: input.config ? JSON.parse(input.config as unknown as string) : undefined,
         });
 
         const service = context.registry.get(input.name);

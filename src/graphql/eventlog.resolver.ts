@@ -488,6 +488,5 @@ export const eventlogResolver = {
 };
 
 /**
- * Exported error types and codes for use in clients and tests
+ * Error codes for use in clients and tests
  */
-export { EventLogGraphQLError, EventLogErrorCode };

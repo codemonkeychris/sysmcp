@@ -36,7 +36,7 @@ function loadEnvFile(): EnvVars {
 
   if (fs.existsSync(envPath)) {
     const result = dotenv.config({ path: envPath });
-    if (result.error && result.error.code !== 'ENOENT') {
+    if (result.error && (result.error as any).code !== 'ENOENT') {
       // File exists but has parse error
       throw new Error(`Failed to parse .env file: ${result.error.message}`);
     }

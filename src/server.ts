@@ -76,7 +76,7 @@ class ServerImpl implements Server {
 
       // Log response when it's sent
       const originalSend = res.send;
-      res.send = function (data) {
+      res.send = function (this: any, data: any) {
         const duration = Date.now() - context.startTime;
         const statusCode = res.statusCode;
 
@@ -111,7 +111,7 @@ class ServerImpl implements Server {
    */
   private setupRoutes(): void {
     // Health check endpoint
-    this.app.get('/health', (req: Request, res: Response) => {
+    this.app.get('/health', (_req: Request, res: Response) => {
       const uptime = Math.floor((Date.now() - this.startTime) / 1000);
       const allServices = this.registry?.getAll() || [];
       const errorServices = allServices.filter((s) => s.state === 'error');
@@ -143,7 +143,7 @@ class ServerImpl implements Server {
    * Set up error handling middleware
    */
   private setupErrorHandling(): void {
-    this.app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    this.app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
       this.logger.error('Unhandled error', {
         error: err.message,
         path: req.path,
@@ -261,5 +261,3 @@ export function createServer(
 ): Server {
   return new ServerImpl(logger, config, registry);
 }
-
-export { Server };

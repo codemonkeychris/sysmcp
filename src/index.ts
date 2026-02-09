@@ -178,8 +178,8 @@ async function main(): Promise<void> {
   }
 }
 
-// Export context and main function for testing
-export { main, initializeApp, shutdownApp, AppContext };
+// Export main functions for testing
+export { main, initializeApp, shutdownApp };
 
 // Run main if this is the entry point
 if (require.main === module) {
