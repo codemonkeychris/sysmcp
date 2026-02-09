@@ -10,6 +10,7 @@ import { ServiceRegistry } from './services/types';
 import { Config } from './config';
 import { typeDefs } from './graphql/schema';
 import { createResolvers } from './graphql/resolvers';
+import { EventLogProvider } from './services/eventlog/provider';
 
 /**
  * Server instance interface
@@ -49,6 +50,7 @@ class ServerImpl implements Server {
   private registry?: ServiceRegistry;
   private httpServer?: ReturnType<Express['listen']>;
   private apolloServer?: ApolloServer;
+  private eventlogProvider?: EventLogProvider;
   private startTime: number = Date.now();
   private isShuttingDown = false;
 
@@ -115,6 +117,23 @@ class ServerImpl implements Server {
    * Set up routes
    */
   private async setupRoutes(): Promise<void> {
+    // Initialize EventLog provider
+    this.eventlogProvider = new EventLogProvider(this.logger, {
+      enabled: true,
+      maxResults: 1000,
+      timeoutMs: 30000,
+      anonymize: false,
+    });
+
+    // Start the EventLog provider
+    try {
+      await this.eventlogProvider.start();
+      this.logger.info('EventLog provider started');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Failed to start EventLog provider', { error: message });
+    }
+
     // Initialize Apollo Server for GraphQL
     this.apolloServer = new ApolloServer({
       typeDefs,
@@ -124,7 +143,7 @@ class ServerImpl implements Server {
         registry: this.registry,
         logger: this.logger,
         startTime: this.startTime,
-        eventlogProvider: undefined,
+        eventlogProvider: this.eventlogProvider,
         eventlogAnonymizer: undefined,
         eventlogMetricsCollector: undefined,
         eventlogMappingPath: undefined,
@@ -230,6 +249,17 @@ class ServerImpl implements Server {
 
     this.isShuttingDown = true;
     this.logger.info('Starting graceful shutdown');
+
+    // Stop EventLog provider if running
+    if (this.eventlogProvider) {
+      try {
+        await this.eventlogProvider.stop();
+        this.logger.debug('EventLog provider stopped');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('Error stopping EventLog provider', { error: message });
+      }
+    }
 
     // Stop Apollo Server if running
     if (this.apolloServer) {
