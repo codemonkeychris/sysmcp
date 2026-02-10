@@ -506,7 +506,14 @@ describe('ProtocolHandler', () => {
       ]);
 
       handler = new ProtocolHandler(mockInput, mockOutput);
-      handler.registerHandler('tools/list', async () => ({ tools: [] }));
+      handler.registerHandler('tools/list', async () => {
+        if (!handler.isInitialized()) {
+          const err = new Error('Server not initialized');
+          (err as any).code = -32002;
+          throw err;
+        }
+        return { tools: [] };
+      });
       handler.start();
 
       await new Promise((resolve) => setTimeout(resolve, 100));

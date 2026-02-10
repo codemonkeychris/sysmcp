@@ -30,7 +30,7 @@ describe('Application Startup and Shutdown', () => {
     it('should load configuration', async () => {
       context = await initializeApp();
 
-      expect(context.config.port).toBeGreaterThan(0);
+      expect(context.config.port).toBeGreaterThanOrEqual(0);
       expect(context.config.logLevel).toMatch(/^(error|warn|info|debug)$/);
       expect(['development', 'production', 'test']).toContain(context.config.nodeEnv);
     }, 10000);
@@ -70,9 +70,12 @@ describe('Application Startup and Shutdown', () => {
     it('should start file watcher in development mode', async () => {
       // Set NODE_ENV to development temporarily
       const originalEnv = process.env.NODE_ENV;
+      const originalPort = process.env.PORT;
 
       try {
         process.env.NODE_ENV = 'development';
+        // Use a random high port to avoid EADDRINUSE conflicts
+        process.env.PORT = String(40000 + Math.floor(Math.random() * 10000));
         context = await initializeApp();
 
         // Watcher may or may not be started depending on environment
@@ -80,20 +83,33 @@ describe('Application Startup and Shutdown', () => {
         expect(context).toBeDefined();
       } finally {
         process.env.NODE_ENV = originalEnv;
+        if (originalPort !== undefined) {
+          process.env.PORT = originalPort;
+        } else {
+          delete process.env.PORT;
+        }
       }
     }, 10000);
 
     it('should not start file watcher in production mode', async () => {
       const originalEnv = process.env.NODE_ENV;
+      const originalPort = process.env.PORT;
 
       try {
         process.env.NODE_ENV = 'production';
+        // Use a random high port to avoid EADDRINUSE on 3000
+        process.env.PORT = String(40000 + Math.floor(Math.random() * 10000));
         context = await initializeApp();
 
         // Watcher should not be created in production
         expect(context.watcher).toBeUndefined();
       } finally {
         process.env.NODE_ENV = originalEnv;
+        if (originalPort !== undefined) {
+          process.env.PORT = originalPort;
+        } else {
+          delete process.env.PORT;
+        }
       }
     }, 10000);
   });
@@ -107,9 +123,12 @@ describe('Application Startup and Shutdown', () => {
 
     it('should stop file watcher if running', async () => {
       const originalEnv = process.env.NODE_ENV;
+      const originalPort = process.env.PORT;
 
       try {
         process.env.NODE_ENV = 'development';
+        // Use a random high port to avoid EADDRINUSE conflicts
+        process.env.PORT = String(40000 + Math.floor(Math.random() * 10000));
         context = await initializeApp();
 
         // Give watcher time to start
@@ -119,6 +138,11 @@ describe('Application Startup and Shutdown', () => {
         await shutdownApp(context);
       } finally {
         process.env.NODE_ENV = originalEnv;
+        if (originalPort !== undefined) {
+          process.env.PORT = originalPort;
+        } else {
+          delete process.env.PORT;
+        }
       }
     }, 10000);
 

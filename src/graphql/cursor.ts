@@ -43,7 +43,16 @@ export function encodeCursor(position: CursorPosition): string {
 export function decodeCursor(cursor: string): CursorPosition {
   try {
     const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
-    const [logName, eventIdStr, timestamp] = decoded.split(':');
+    const firstColon = decoded.indexOf(':');
+    const secondColon = decoded.indexOf(':', firstColon + 1);
+
+    if (firstColon === -1 || secondColon === -1) {
+      throw new Error('Cursor missing required components');
+    }
+
+    const logName = decoded.substring(0, firstColon);
+    const eventIdStr = decoded.substring(firstColon + 1, secondColon);
+    const timestamp = decoded.substring(secondColon + 1);
 
     if (!logName || !eventIdStr || !timestamp) {
       throw new Error('Cursor missing required components');

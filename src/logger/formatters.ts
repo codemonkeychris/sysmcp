@@ -8,11 +8,11 @@ import { LogEntry, LogLevel } from './types';
  * PII filter patterns and masking functions
  */
 const PII_PATTERNS = {
-  // Password/token patterns
-  password: /password\s*[:=]\s*["']([^"']+)["']/gi,
-  token: /token\s*[:=]\s*["']([^"']+)["']/gi,
-  secret: /secret\s*[:=]\s*["']([^"']+)["']/gi,
-  apiKey: /api[_-]?key\s*[:=]\s*["']([^"']+)["']/gi,
+  // Password/token patterns - match both quoted and unquoted values
+  password: /(?:password|pwd)\s*[:=]\s*["']?([^"',}\s]+)["']?/gi,
+  token: /(?:token|auth|authorization)\s*[:=]\s*["']?([^"',}\s]+)["']?/gi,
+  secret: /(?:secret|pass)\s*[:=]\s*["']?([^"',}\s]+)["']?/gi,
+  apiKey: /(?:api[_-]?key|key)\s*[:=]\s*["']?([^"',}\s]+)["']?/gi,
   
   // Email pattern
   email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
@@ -83,7 +83,7 @@ export function filterPII(value: unknown): unknown {
   if (typeof value === 'string') {
     let filtered = value;
     
-    // Mask passwords/tokens
+    // Mask passwords/tokens in key=value format
     filtered = filtered.replace(PII_PATTERNS.password, 'password=[REDACTED]');
     filtered = filtered.replace(PII_PATTERNS.token, 'token=[REDACTED]');
     filtered = filtered.replace(PII_PATTERNS.secret, 'secret=[REDACTED]');
@@ -123,7 +123,20 @@ export function filterPII(value: unknown): unknown {
   if (typeof value === 'object') {
     const filtered: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
-      filtered[key] = filterPII(val);
+      // If the key is a sensitive field name, redact the value
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey.includes('password') ||
+        lowerKey.includes('pwd') ||
+        lowerKey.includes('secret') ||
+        lowerKey.includes('token') ||
+        lowerKey.includes('apikey') ||
+        lowerKey.includes('api_key')
+      ) {
+        filtered[key] = '[REDACTED]';
+      } else {
+        filtered[key] = filterPII(val);
+      }
     }
     return filtered;
   }

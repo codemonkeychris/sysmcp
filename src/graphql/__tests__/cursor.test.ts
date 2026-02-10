@@ -16,7 +16,8 @@ describe('Cursor Utilities', () => {
       const cursor = encodeCursor(position);
 
       expect(cursor).toMatch(/^[A-Za-z0-9+/=]+$/); // Valid base64
-      expect(cursor).toContain('System'); // Decoded should contain logName
+      const decoded = decodeCursor(cursor);
+    expect(decoded.logName).toBe('System');
     });
 
     it('should handle special characters in logName', () => {
@@ -141,3 +142,4 @@ describe('Cursor Utilities', () => {
     });
   });
 });
+

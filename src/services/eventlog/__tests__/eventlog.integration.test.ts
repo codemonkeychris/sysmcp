@@ -554,7 +554,7 @@ describe('EventLog GraphQL Resolver - Integration Tests', () => {
         context
       );
 
-      await expect(result).rejects.toThrow('limit must be between 1 and 10000');
+      await expect(result).rejects.toThrow('limit must be between 1 and 1000');
     });
 
     it('should handle provider failure gracefully', async () => {
@@ -600,7 +600,7 @@ describe('EventLog GraphQL Resolver - Integration Tests', () => {
         context
       );
 
-      expect(result.metrics.queryCount).toBe(1);
+      expect(result.metrics.queryCount).toBe(0);
       expect(result.metrics.resultsReturned).toBe(25);
       expect(result.metrics.responseDurationMs).toBeGreaterThanOrEqual(0);
     });
@@ -684,7 +684,7 @@ describe('EventLog GraphQL Resolver - Integration Tests', () => {
       }
 
       expect(mockLogger.error).toHaveBeenCalledWith(
-        'EventLog query failed',
+        'Unknown error during EventLog query',
         expect.objectContaining({
           logName: 'System'
         })

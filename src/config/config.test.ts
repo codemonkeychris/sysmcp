@@ -1,4 +1,4 @@
-import { createConfig, isDevelopment, isProduction, Config } from '../index';
+import { createConfig, isDevelopment, isProduction } from './index';
 
 describe('Configuration Manager', () => {
   const originalEnv = process.env;
@@ -61,7 +61,15 @@ describe('Configuration Manager', () => {
       expect(() => createConfig()).toThrow('Invalid PORT');
     });
 
-    it('should reject PORT 0', () => {
+    it('should allow PORT 0 in test mode', () => {
+      process.env.NODE_ENV = 'test';
+      process.env.PORT = '0';
+      const config = createConfig();
+      expect(config.port).toBe(0);
+    });
+
+    it('should reject PORT 0 in production mode', () => {
+      process.env.NODE_ENV = 'production';
       process.env.PORT = '0';
       expect(() => createConfig()).toThrow('Invalid PORT');
     });

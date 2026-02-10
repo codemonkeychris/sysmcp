@@ -6,7 +6,7 @@
  * Tests with simulated MCP client and real JSON-RPC messages
  */
 
-import { ProtocolHandler, JSON_RPC_ERRORS } from '../protocol-handler';
+import { ProtocolHandler } from '../protocol-handler';
 import { ServiceManager } from '../service-manager';
 import { ToolExecutor } from '../tool-executor';
 import { SchemaValidator } from '../schema-validator';
@@ -86,7 +86,7 @@ describe('E2E MCP Integration', () => {
     toolExecutor = new ToolExecutor(serviceManager);
 
     // Register MCP handlers
-    handler.registerHandler('initialize', async (params: any) => {
+    handler.registerHandler('initialize', async (_params: unknown, _requestId: string | number | null) => {
       return {
         protocolVersion: '2024-11-05',
         capabilities: {
@@ -99,72 +99,78 @@ describe('E2E MCP Integration', () => {
       };
     });
 
-    handler.registerHandler('tools/list', async () => {
+    handler.registerHandler('tools/list', async (_params: unknown, _requestId: string | number | null) => {
       const tools = toolExecutor.getTools();
       return { tools };
     });
 
-    handler.registerHandler('tools/call', async (params: any) => {
-      return await toolExecutor.executeTool(params.name, params.arguments);
+    handler.registerHandler('tools/call', async (params: unknown, _requestId: string | number | null) => {
+      const p = params as { name: string; arguments: Record<string, unknown> };
+      try {
+        return await toolExecutor.executeTool({ name: p.name, arguments: p.arguments });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { content: [{ type: 'text' as const, text: message }], isError: true };
+      }
     });
   });
 
   describe('Full Initialization → List Tools → Execute Tool Flow', () => {
     it('complete initialize → tools/list → tools/call sequence', async () => {
       // Step 1: Initialize
-      const initHandler = handler['handlers'].get('initialize');
+      const initHandler = handler['handlers'].get('initialize')!;
       const initResponse = await initHandler({
         clientInfo: {
           name: 'Claude',
           version: '1.0',
         },
-      });
+      }, 'test-init') as { protocolVersion: string; capabilities: unknown; serverInfo: unknown };
 
       expect(initResponse.protocolVersion).toBe('2024-11-05');
       expect(initResponse.capabilities).toBeDefined();
       expect(initResponse.serverInfo).toBeDefined();
 
       // Step 2: List Tools
-      const listHandler = handler['handlers'].get('tools/list');
-      const listResponse = await listHandler({});
+      const listHandler = handler['handlers'].get('tools/list')!;
+      const listResponse = await listHandler({}, 'test-list') as { tools: unknown[] };
 
       expect(listResponse.tools).toBeDefined();
       expect(Array.isArray(listResponse.tools)).toBe(true);
       expect(listResponse.tools.length).toBeGreaterThan(0);
 
       // Step 3: Execute Tool
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const callResponse = await callHandler({
         name: 'eventlog_query',
         arguments: {
           logName: 'System',
           limit: 10,
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
       expect(callResponse).toBeDefined();
-      expect(callResponse.success).toBe(true);
+      expect(callResponse.isError).toBeFalsy();
     });
 
     it('initializes with client info', async () => {
-      const initHandler = handler['handlers'].get('initialize');
+      const initHandler = handler['handlers'].get('initialize')!;
       const response = await initHandler({
         clientInfo: {
           name: 'Cursor',
           version: '0.20',
         },
-      });
+      }, 'test-init') as { serverInfo: { name: string; version: string } };
 
       expect(response.serverInfo.name).toBe('SysMCP');
       expect(response.serverInfo.version).toBe('1.0.0');
     });
 
     it('lists all available tools from all services', async () => {
-      const listHandler = handler['handlers'].get('tools/list');
-      const response = await listHandler({});
+      const listHandler = handler['handlers'].get('tools/list')!;
+      const response = await listHandler({}, 'test-list') as { tools: { name: string }[] };
 
       expect(response.tools).toBeDefined();
-      const tools = response.tools as any[];
+      const tools = response.tools;
       expect(tools.length).toBeGreaterThan(0);
 
       // Should include EventLog tools
@@ -173,7 +179,7 @@ describe('E2E MCP Integration', () => {
     });
 
     it('executes eventlog_query tool successfully', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
@@ -181,21 +187,21 @@ describe('E2E MCP Integration', () => {
           limit: 50,
           offset: 0,
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      expect(response.data).toBeDefined();
+      expect(response.isError).toBeFalsy();
+      expect(response.content).toBeDefined();
     });
 
     it('executes eventlog_list_logs tool successfully', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_list_logs',
         arguments: {},
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      expect(response.data).toBeDefined();
+      expect(response.isError).toBeFalsy();
+      expect(response.content).toBeDefined();
     });
   });
 
@@ -205,7 +211,7 @@ describe('E2E MCP Integration', () => {
 
       expect(tools.length).toBeGreaterThan(0);
 
-      tools.forEach((tool: any) => {
+      tools.forEach((tool) => {
         expect(tool.name).toBeDefined();
         expect(tool.description).toBeDefined();
         expect(tool.inputSchema).toBeDefined();
@@ -215,11 +221,10 @@ describe('E2E MCP Integration', () => {
 
     it('tool schemas are valid for validation', async () => {
       const tools = toolExecutor.getTools();
-      const validator = new SchemaValidator();
 
-      tools.forEach((tool: any) => {
+      tools.forEach((tool) => {
         // Should not throw
-        const result = validator.validate({ logName: 'System', limit: 10 }, tool.inputSchema);
+        const result = SchemaValidator.validate({ logName: 'System', limit: 10 }, tool.inputSchema);
         expect(result.valid !== undefined).toBe(true);
       });
     });
@@ -228,21 +233,21 @@ describe('E2E MCP Integration', () => {
       const tool = toolExecutor.getTool('eventlog_query');
       expect(tool).toBeDefined();
 
-      const schema = (tool as any).inputSchema;
+      const schema = tool!.inputSchema;
       expect(schema.properties).toBeDefined();
-      expect(schema.properties.logName).toBeDefined();
+      expect(schema.properties!.logName).toBeDefined();
     });
 
     it('eventlog_list_logs tool exists in discovery', async () => {
       const tool = toolExecutor.getTool('eventlog_list_logs');
       expect(tool).toBeDefined();
-      expect((tool as any).name).toBe('eventlog_list_logs');
+      expect(tool!.name).toBe('eventlog_list_logs');
     });
   });
 
   describe('Tool Execution with Various Arguments', () => {
     it('executes eventlog_query with all parameters', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
@@ -252,26 +257,26 @@ describe('E2E MCP Integration', () => {
           minLevel: 'WARNING',
           source: 'TestSource',
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      expect(response.data).toBeDefined();
+      expect(response.isError).toBeFalsy();
+      expect(response.content).toBeDefined();
     });
 
     it('executes eventlog_query with minimal parameters', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
           logName: 'System',
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
+      expect(response.isError).toBeFalsy();
     });
 
     it('executes with pagination parameters', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
@@ -279,15 +284,14 @@ describe('E2E MCP Integration', () => {
           limit: 25,
           offset: 0,
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      const data = (response.data as any);
-      expect(data.nextOffset !== undefined).toBe(true);
+      expect(response.isError).toBeFalsy();
+      expect(response.content).toBeDefined();
     });
 
     it('executes with filter parameters', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
@@ -295,63 +299,60 @@ describe('E2E MCP Integration', () => {
           minLevel: 'ERROR',
           source: 'Test',
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
+      expect(response.isError).toBeFalsy();
     });
   });
 
   describe('Response Format Validation', () => {
     it('returns MCP-formatted ToolResult', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
           logName: 'System',
           limit: 10,
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
       // MCP ToolResult format
-      expect(response.success).toBeDefined();
-      expect(typeof response.success).toBe('boolean');
-      expect(response.data).toBeDefined();
+      expect(response.content).toBeDefined();
+      expect(Array.isArray(response.content)).toBe(true);
     });
 
-    it('includes pagination metadata in response', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+    it('includes data in tool response content', async () => {
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
           logName: 'System',
           limit: 50,
         },
-      });
+      }, 'test-call') as { content: { type: string; text: string }[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      const data = (response.data as any);
-      expect(data.totalCount !== undefined).toBe(true);
-      expect(data.entries !== undefined).toBe(true);
+      expect(response.isError).toBeFalsy();
+      expect(response.content.length).toBeGreaterThan(0);
+      expect(response.content[0].type).toBe('text');
     });
 
-    it('response includes proper data structure', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+    it('response content contains valid JSON', async () => {
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
           logName: 'System',
           limit: 10,
         },
-      });
+      }, 'test-call') as { content: { type: string; text: string }[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      const data = (response.data as any);
-      expect(Array.isArray(data.entries)).toBe(true);
-      expect(typeof data.totalCount).toBe('number');
+      expect(response.isError).toBeFalsy();
+      const data = JSON.parse(response.content[0].text);
+      expect(data).toBeDefined();
     });
 
-    it('includes nextOffset for pagination', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+    it('response is valid ToolCallResponse', async () => {
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
@@ -359,52 +360,49 @@ describe('E2E MCP Integration', () => {
           limit: 50,
           offset: 0,
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(true);
-      const data = (response.data as any);
-      expect(data.nextOffset !== undefined).toBe(true);
+      expect(response.isError).toBeFalsy();
+      expect(response.content).toBeDefined();
     });
   });
 
   describe('Error Handling End-to-End', () => {
     it('returns error for unknown tool', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'nonexistent_tool',
         arguments: {},
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(false);
-      expect(response.error).toBeDefined();
+      expect(response.isError).toBe(true);
     });
 
     it('returns error for invalid parameters', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {
           logName: 'System',
           limit: 'invalid', // Should be number
         },
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(false);
-      expect(response.error).toBeDefined();
+      expect(response.isError).toBe(true);
     });
 
     it('returns error for missing required parameters', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       const response = await callHandler({
         name: 'eventlog_query',
         arguments: {}, // Missing logName
-      });
+      }, 'test-call') as { content: unknown[]; isError?: boolean };
 
-      expect(response.success).toBe(false);
+      expect(response.isError).toBe(true);
     });
 
     it('service remains stable after error', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
 
       // First: error
       const errorResponse = await callHandler({
@@ -413,9 +411,9 @@ describe('E2E MCP Integration', () => {
           logName: 'System',
           limit: 'invalid',
         },
-      });
+      }, 'test-call-1') as { content: unknown[]; isError?: boolean };
 
-      expect(errorResponse.success).toBe(false);
+      expect(errorResponse.isError).toBe(true);
 
       // Second: should work
       const successResponse = await callHandler({
@@ -424,9 +422,9 @@ describe('E2E MCP Integration', () => {
           logName: 'System',
           limit: 10,
         },
-      });
+      }, 'test-call-2') as { content: unknown[]; isError?: boolean };
 
-      expect(successResponse.success).toBe(true);
+      expect(successResponse.isError).toBeFalsy();
     });
   });
 
@@ -435,27 +433,26 @@ describe('E2E MCP Integration', () => {
       const tools = toolExecutor.getTools();
 
       // All eventlog tools should be routable
-      const eventlogTools = tools.filter((t: any) => t.name.startsWith('eventlog_'));
+      const eventlogTools = tools.filter((t) => t.name.startsWith('eventlog_'));
       expect(eventlogTools.length).toBeGreaterThan(0);
 
       // Each should be callable
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
       for (const tool of eventlogTools) {
         const response = await callHandler({
-          name: (tool as any).name,
-          arguments: (tool as any).name === 'eventlog_list_logs' ? {} : { logName: 'System' },
-        });
+          name: tool.name,
+          arguments: tool.name === 'eventlog_list_logs' ? {} : { logName: 'System' },
+        }, 'test-route');
 
         expect(response).toBeDefined();
       }
     });
 
     it('lists tools from all registered services', async () => {
-      const listHandler = handler['handlers'].get('tools/list');
-      const response = await listHandler({});
+      const listHandler = handler['handlers'].get('tools/list')!;
+      const response = await listHandler({}, 'test-list') as { tools: { name: string }[] };
 
-      const tools = response.tools as any[];
-      const toolNames = tools.map((t) => t.name);
+      const toolNames = response.tools.map((t) => t.name);
 
       // Should have at least EventLog tools
       expect(toolNames).toContain('eventlog_query');
@@ -465,15 +462,15 @@ describe('E2E MCP Integration', () => {
 
   describe('Sequential Tool Execution', () => {
     it('executes multiple tools sequentially', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
 
       // First call
       const response1 = await callHandler({
         name: 'eventlog_list_logs',
         arguments: {},
-      });
+      }, 'test-request-1') as { content: unknown[]; isError?: boolean };
 
-      expect(response1.success).toBe(true);
+      expect(response1.isError).toBeFalsy();
 
       // Second call
       const response2 = await callHandler({
@@ -482,9 +479,9 @@ describe('E2E MCP Integration', () => {
           logName: 'System',
           limit: 10,
         },
-      });
+      }, 'test-request-2') as { content: unknown[]; isError?: boolean };
 
-      expect(response2.success).toBe(true);
+      expect(response2.isError).toBeFalsy();
 
       // Third call
       const response3 = await callHandler({
@@ -493,20 +490,20 @@ describe('E2E MCP Integration', () => {
           logName: 'Application',
           limit: 5,
         },
-      });
+      }, 'test-request-3') as { content: unknown[]; isError?: boolean };
 
-      expect(response3.success).toBe(true);
+      expect(response3.isError).toBeFalsy();
     });
 
     it('tool list can be called multiple times', async () => {
-      const listHandler = handler['handlers'].get('tools/list');
+      const listHandler = handler['handlers'].get('tools/list')!;
 
-      const response1 = await listHandler({});
-      const response2 = await listHandler({});
+      const response1 = await listHandler({}, 'test-request-1') as { tools: unknown[] };
+      const response2 = await listHandler({}, 'test-request-2') as { tools: unknown[] };
 
       expect(response1.tools).toBeDefined();
       expect(response2.tools).toBeDefined();
-      expect((response1.tools as any[]).length).toBe((response2.tools as any[]).length);
+      expect(response1.tools.length).toBe(response2.tools.length);
     });
   });
 
@@ -521,7 +518,7 @@ describe('E2E MCP Integration', () => {
     });
 
     it('tool execution completes in reasonable time', async () => {
-      const callHandler = handler['handlers'].get('tools/call');
+      const callHandler = handler['handlers'].get('tools/call')!;
 
       const startTime = Date.now();
       const response = await callHandler({
@@ -530,10 +527,10 @@ describe('E2E MCP Integration', () => {
           logName: 'System',
           limit: 10,
         },
-      });
+      }, 'test-request') as { content: unknown[]; isError?: boolean };
       const duration = Date.now() - startTime;
 
-      expect(response.success).toBe(true);
+      expect(response.isError).toBeFalsy();
       expect(duration).toBeLessThan(100); // <100ms target
     });
   });

@@ -295,17 +295,21 @@ export async function eventLogsResolver(
       }
     });
 
-    // Initialize anonymizer only if explicitly configured
+    // Initialize anonymizer - always anonymize for security (defense in depth)
     let anonymizer = context.eventlogAnonymizer;
-    if (!anonymizer && context.eventlogMappingPath) {
-      // Only create anonymizer if a mapping path is explicitly configured
-      try {
-        const mapping = await PiiAnonymizer.loadMapping(context.eventlogMappingPath);
-        anonymizer = new PiiAnonymizer(mapping);
-        logger.debug('Loaded persisted anonymization mapping');
-      } catch (error) {
-        // If mapping doesn't exist or is corrupt, start fresh
-        logger.debug('Starting with fresh anonymization mapping');
+    if (!anonymizer) {
+      if (context.eventlogMappingPath) {
+        try {
+          const mapping = await PiiAnonymizer.loadMapping(context.eventlogMappingPath);
+          anonymizer = new PiiAnonymizer(mapping);
+          logger.debug('Loaded persisted anonymization mapping');
+        } catch (error) {
+          // If mapping doesn't exist or is corrupt, start fresh
+          logger.debug('Starting with fresh anonymization mapping');
+          anonymizer = new PiiAnonymizer();
+        }
+      } else {
+        // SECURITY: Always anonymize even without explicit mapping path
         anonymizer = new PiiAnonymizer();
       }
     }

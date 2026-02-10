@@ -60,7 +60,7 @@ describe('File Watcher', () => {
       const watcher = createFileWatcher(logger, config, registry, lifecycleManager);
 
       // Start should complete (may take a moment for ready event)
-      const startPromise = watcher.start();
+      void watcher.start();
 
       // Give it a moment to initialize
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -169,7 +169,7 @@ describe('File Watcher', () => {
       const watcher = createFileWatcher(logger, devConfig, registry, lifecycleManager);
 
       // Should be able to start in dev mode
-      const startPromise = watcher.start();
+      void watcher.start();
 
       // Give initialization time
       await new Promise((resolve) => setTimeout(resolve, 100));
@@ -201,7 +201,7 @@ describe('File Watcher', () => {
       const watcher = createFileWatcher(logger, testConfig, registry, lifecycleManager);
 
       // Test mode is not production, so should activate
-      const startPromise = watcher.start();
+      void watcher.start();
 
       // Give initialization time
       await new Promise((resolve) => setTimeout(resolve, 100));

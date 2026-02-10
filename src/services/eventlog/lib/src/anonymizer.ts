@@ -122,8 +122,8 @@ export class PiiAnonymizer {
     computerName: /^[A-Za-z0-9][A-Za-z0-9-]{0,14}$/,
     // IPv4 address
     ipv4: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
-    // IPv6 address
-    ipv6: /(?:[0-9a-f]{1,4}:){2,7}[0-9a-f]{1,4}/gi,
+    // IPv6 address (full, compressed, and loopback)
+    ipv6: /(?:::(?:ffff:)?(?:\d{1,3}\.){3}\d{1,3}|(?:[0-9a-f]{1,4}:){1,7}[0-9a-f]{1,4}|(?:[0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}|::(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4}|[0-9a-f]{1,4}::(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4}|::1|::)\b/gi,
     // Email address
     email: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}/g,
     // Windows file path
@@ -193,13 +193,51 @@ export class PiiAnonymizer {
     'timestamp',
   ]);
 
+  /**
+   * Fields that are always PII and should be fully anonymized
+   */
+  private static readonly PII_FIELDS: Record<string, string> = {
+    'userId': 'ANON_USER',
+    'computerName': 'ANON_COMPUTER',
+  };
+
   anonymizeEntry(entry: RawEventLogEntry): AnonymizedEventLogEntry {
     const result: AnonymizedEventLogEntry = { ...entry };
 
-    // Anonymize only PII-bearing string fields, skip safe fields
+    // Track PII field values for message anonymization
+    const piiReplacements: Array<{ original: string; token: string }> = [];
+
+    // First pass: anonymize inherently PII fields and collect replacements
     for (const [key, value] of Object.entries(result)) {
-      if (typeof value === 'string' && !PiiAnonymizer.SAFE_FIELDS.has(key)) {
-        result[key] = this.anonymizeString(value);
+      if (typeof value === 'string' && value.length > 0 && !PiiAnonymizer.SAFE_FIELDS.has(key)) {
+        if (key in PiiAnonymizer.PII_FIELDS) {
+          const mapKey = key === 'userId' ? 'usernames' : 'computerNames';
+          const token = this.getOrCreateToken(value, mapKey, PiiAnonymizer.PII_FIELDS[key]);
+          result[key] = token;
+          piiReplacements.push({ original: value, token });
+          // Also extract username component from DOMAIN\user patterns
+          if (key === 'userId' && value.includes('\\')) {
+            const username = value.split('\\').pop()!;
+            if (username.length > 0) {
+              piiReplacements.push({ original: username, token });
+            }
+          }
+        }
+      }
+    }
+
+    // Second pass: anonymize remaining string fields with pattern matching
+    for (const [key, value] of Object.entries(result)) {
+      if (typeof value === 'string' && !PiiAnonymizer.SAFE_FIELDS.has(key) && !(key in PiiAnonymizer.PII_FIELDS)) {
+        let anonymized = this.anonymizeString(value);
+        // Also replace any known PII values found in PII fields (longest first to avoid partial matches)
+        const sorted = [...piiReplacements].sort((a, b) => b.original.length - a.original.length);
+        for (const { original, token } of sorted) {
+          if (original && anonymized.includes(original)) {
+            anonymized = anonymized.split(original).join(token);
+          }
+        }
+        result[key] = anonymized;
       }
     }
 
@@ -329,6 +367,12 @@ export class PiiAnonymizer {
     // Anonymize local machine name first (highest priority)
     result = this.anonymizeLocalMachineName(result);
 
+    // Anonymize file paths before usernames (C:\Users\x looks like DOMAIN\user)
+    result = this.anonymizeFilePaths(result);
+
+    // Anonymize email addresses before usernames (user@domain contains backslash-like patterns)
+    result = this.anonymizeEmails(result);
+
     // Anonymize usernames (DOMAIN\username)
     result = this.anonymizeUsernames(result);
 
@@ -337,12 +381,6 @@ export class PiiAnonymizer {
 
     // Anonymize IPv4 and IPv6 addresses
     result = this.anonymizeIpAddresses(result);
-
-    // Anonymize email addresses
-    result = this.anonymizeEmails(result);
-
-    // Anonymize file paths
-    result = this.anonymizeFilePaths(result);
 
     return result;
   }
@@ -365,14 +403,14 @@ export class PiiAnonymizer {
    */
   private anonymizeLocalMachineName(value: string): string {
     // Create case-insensitive regex for the local machine name
-    const escapedName = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedName = this.localMachineName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const machineNameRegex = new RegExp(`\\b${escapedName}\\b`, 'gi');
 
     // Check if the local machine name appears in the value
     if (machineNameRegex.test(value)) {
       // Reset regex (global flag resets position on test)
       machineNameRegex.lastIndex = 0;
-      return value.replace(machineNameRegex, (match) => {
+      return value.replace(machineNameRegex, (_match) => {
         return this.getOrCreateToken(this.localMachineName, 'computerNames', 'ANON_COMPUTER');
       });
     }
@@ -388,8 +426,15 @@ export class PiiAnonymizer {
    * @private
    */
   private anonymizeUsernames(value: string): string {
-    // Match DOMAIN\username pattern
-    return value.replace(/([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+)/g, (match) => {
+    // Match DOMAIN\username pattern, skip path-like segments
+    return value.replace(/\b([A-Za-z0-9._-]+\\[A-Za-z0-9._-]+)\b/g, (match, _p1, offset) => {
+      // Skip if this looks like a continuation of a file path (preceded by \ or ])
+      if (offset > 0) {
+        const prevChar = value[offset - 1];
+        if (prevChar === '\\' || prevChar === ']') {
+          return match;
+        }
+      }
       return this.getOrCreateToken(match, 'usernames', 'ANON_USER');
     });
   }
@@ -480,11 +525,17 @@ export class PiiAnonymizer {
    * @private
    */
   private anonymizeFilePaths(value: string): string {
-    // Match C:\Users\username or similar user profile paths
-    return value.replace(/C:\\Users\\([A-Za-z0-9._-]+)/gi, (_match, username) => {
+    // Match <drive>:\Users\username[\rest\of\path] — anonymize full user profile path
+    let result = value.replace(/([A-Za-z]):\\Users\\([A-Za-z0-9._-]+)((?:\\[A-Za-z0-9._-]+)*)/gi, (_match, drive: string, username: string) => {
       const token = this.getOrCreateToken(username, 'usernames', 'ANON_USER');
-      return `C:\\Users\\${token}`;
+      return `${drive}:\\Users\\${token}`;
     });
+    // Also handle UNC paths like \\SERVER\Share\Users\username[\rest]
+    result = result.replace(/\\\\[A-Za-z0-9._-]+\\[A-Za-z0-9._-]+\\Users\\([A-Za-z0-9._-]+)((?:\\[A-Za-z0-9._-]+)*)/gi, (_match, username: string) => {
+      const token = this.getOrCreateToken(username, 'usernames', 'ANON_USER');
+      return `[ANON_PATH]\\Users\\${token}`;
+    });
+    return result;
   }
 
   /**

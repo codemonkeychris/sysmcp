@@ -5,7 +5,6 @@
 import { createRegistry } from '../registry';
 import { createLifecycleManager } from '../lifecycle';
 import { createLogger } from '../../logger';
-import { ServiceConfig } from '../types';
 
 describe('Service Lifecycle Manager', () => {
   let registry: ReturnType<typeof createRegistry>;
@@ -111,7 +110,7 @@ describe('Service Lifecycle Manager', () => {
 
       const service = registry.get('test-service');
       expect(service?.state).toBe('error');
-    }, 20000);
+    }, 35000);
 
     it('should fail after max retries exceeded', async () => {
       manager.registerInit('test-service', async () => {

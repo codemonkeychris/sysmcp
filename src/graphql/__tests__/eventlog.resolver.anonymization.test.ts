@@ -5,13 +5,12 @@
 import { eventLogsResolver } from '../eventlog.resolver';
 import { EventLogProvider } from '../../services/eventlog/provider';
 import { Logger } from '../../logger/types';
-import { PiiAnonymizer } from '../../services/eventlog/lib/src/anonymizer';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('EventLog GraphQL Resolver - Anonymization', () => {
   let mockLogger: Logger;
-  let mockProvider: EventLogProvider;
+  let mockProvider: jest.Mocked<EventLogProvider>;
   let context: any;
   let tempMappingPath: string;
 
@@ -28,7 +27,7 @@ describe('EventLog GraphQL Resolver - Anonymization', () => {
 
     mockProvider = {
       query: jest.fn()
-    } as any;
+    } as unknown as jest.Mocked<EventLogProvider>;
 
     context = {
       logger: mockLogger,

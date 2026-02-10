@@ -92,10 +92,10 @@ export class EventLogMetricsCollector {
    */
   public recordQuery(duration: number, resultCount: number, failed: boolean = false): void {
     // Validate inputs
-    if (typeof duration !== 'number' || duration < 0) {
+    if (typeof duration !== 'number' || isNaN(duration) || duration < 0) {
       throw new Error('Duration must be a non-negative number');
     }
-    if (typeof resultCount !== 'number' || resultCount < 0) {
+    if (typeof resultCount !== 'number' || isNaN(resultCount) || resultCount < 0) {
       throw new Error('Result count must be a non-negative number');
     }
 
@@ -163,9 +163,10 @@ export class EventLogMetricsCollector {
   public async export(): Promise<MetricsReport> {
     const snapshot = this.getMetrics();
     const uptimeMs = Date.now() - this.startTimeMs;
+    const uptimeSafe = Math.max(1, uptimeMs);
     const queriesPerSecond =
-      snapshot.totalQueryCount > 0
-        ? (snapshot.totalQueryCount / (uptimeMs / 1000))
+      snapshot.totalQueryCount > 0 && uptimeSafe > 0
+        ? (snapshot.totalQueryCount / (uptimeSafe / 1000))
         : 0;
 
     const averageResultsPerQuery =

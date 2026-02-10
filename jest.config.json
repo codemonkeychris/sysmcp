@@ -36,5 +36,10 @@
         "esModuleInterop": true
       }
     }]
+  },
+  "setupFiles": ["<rootDir>/jest.setup.js"],
+  "testTimeout": 15000,
+  "globals": {
+    "NODE_ENV": "test"
   }
 }
