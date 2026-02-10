@@ -3,7 +3,7 @@
  */
 
 import { typeDefs } from '../schema';
-import { buildSchema } from 'graphql';
+import { buildSchema, GraphQLEnumType, GraphQLObjectType } from 'graphql';
 
 describe('GraphQL Schema', () => {
   describe('Schema validation', () => {
@@ -18,7 +18,7 @@ describe('GraphQL Schema', () => {
       const eventLevelType = schema.getType('EventLevel');
 
       expect(eventLevelType).toBeDefined();
-      expect(eventLevelType!.getValues().map(v => v.name)).toEqual([
+      expect((eventLevelType as GraphQLEnumType).getValues().map(v => v.name)).toEqual([
         'ERROR',
         'WARNING',
         'INFO',
@@ -32,7 +32,7 @@ describe('GraphQL Schema', () => {
       const entryType = schema.getType('EventLogEntry');
 
       expect(entryType).toBeDefined();
-      const fields = entryType!.getFields();
+      const fields = (entryType as GraphQLObjectType).getFields();
 
       expect(Object.keys(fields)).toContain('id');
       expect(Object.keys(fields)).toContain('timestamp');
@@ -49,7 +49,7 @@ describe('GraphQL Schema', () => {
       const pageInfoType = schema.getType('PageInfo');
 
       expect(pageInfoType).toBeDefined();
-      const fields = pageInfoType!.getFields();
+      const fields = (pageInfoType as GraphQLObjectType).getFields();
 
       expect(Object.keys(fields)).toContain('hasNextPage');
       expect(Object.keys(fields)).toContain('hasPreviousPage');
@@ -62,7 +62,7 @@ describe('GraphQL Schema', () => {
       const metricsType = schema.getType('EventLogQueryMetrics');
 
       expect(metricsType).toBeDefined();
-      const fields = metricsType!.getFields();
+      const fields = (metricsType as GraphQLObjectType).getFields();
 
       expect(Object.keys(fields)).toContain('queryCount');
       expect(Object.keys(fields)).toContain('responseDurationMs');
@@ -74,7 +74,7 @@ describe('GraphQL Schema', () => {
       const resultType = schema.getType('EventLogResult');
 
       expect(resultType).toBeDefined();
-      const fields = resultType!.getFields();
+      const fields = (resultType as GraphQLObjectType).getFields();
 
       expect(Object.keys(fields)).toContain('entries');
       expect(Object.keys(fields)).toContain('pageInfo');

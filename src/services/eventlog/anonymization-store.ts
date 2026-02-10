@@ -68,41 +68,38 @@ export class AnonymizationStore {
    * @throws Error if save fails
    */
   async save(mapping: AnonymizationMapping): Promise<void> {
+    // Ensure directory exists
+    const dir = path.dirname(this.config.storagePath);
+    if (this.config.createDirs && !fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Prepare serializable mapping
+    const serializable = this.serializeMapping(mapping);
+    const content = JSON.stringify(serializable, null, 2);
+
+    // Write to temp file with unique name to avoid concurrent write conflicts
+    const tmpPath = `${this.config.storagePath}.${process.pid}.${Date.now()}.tmp`;
+    
     return new Promise((resolve, reject) => {
       try {
-        // Ensure directory exists
-        const dir = path.dirname(this.config.storagePath);
-        if (this.config.createDirs && !fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(tmpPath, content, 'utf-8');
+
+        // Try to set file mode for Unix-like systems
+        try {
+          fs.chmodSync(tmpPath, this.config.fileMode);
+        } catch {
+          // Ignore - not critical on Windows
         }
 
-        // Prepare serializable mapping
-        const serializable = this.serializeMapping(mapping);
-        const content = JSON.stringify(serializable, null, 2);
-
-        // Write to temp file
-        const tmpPath = `${this.config.storagePath}.tmp`;
-        fs.writeFile(tmpPath, content, 'utf-8', (err) => {
-          if (err) {
-            reject(err);
-            return;
+        // Atomic rename
+        fs.rename(tmpPath, this.config.storagePath, (renameErr) => {
+          if (renameErr) {
+            try { fs.unlinkSync(tmpPath); } catch { /* ignore */ }
+            reject(renameErr);
+          } else {
+            resolve();
           }
-
-          // Try to set file mode for Unix-like systems
-          try {
-            fs.chmodSync(tmpPath, this.config.fileMode);
-          } catch {
-            // Ignore - not critical on Windows
-          }
-
-          // Atomic rename
-          fs.rename(tmpPath, this.config.storagePath, (renameErr) => {
-            if (renameErr) {
-              reject(renameErr);
-            } else {
-              resolve();
-            }
-          });
         });
       } catch (error) {
         reject(error);

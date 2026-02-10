@@ -5,14 +5,22 @@
  */
 
 import { eventLogsResolver } from '../eventlog.resolver';
-import { EventLogProvider } from '../../services/eventlog/provider';
+import { EventLogProvider, EventLogProviderResult } from '../../services/eventlog/provider';
 import { EventLogMetricsCollector } from '../../services/eventlog/metrics';
 import { Logger } from '../../logger/types';
-import { EventLevel } from '../../services/eventlog/types';
 
 describe('EventLog GraphQL Resolver - Metrics Integration', () => {
+  function mockResult(overrides: Partial<EventLogProviderResult> & { entries: any[]; totalCount: number; hasMore: boolean }): EventLogProviderResult {
+    return {
+      success: true,
+      executionTimeMs: 1,
+      queriedAt: new Date(),
+      ...overrides
+    };
+  }
+
   let mockLogger: Logger;
-  let mockProvider: EventLogProvider;
+  let mockProvider: jest.Mocked<EventLogProvider>;
   let metricsCollector: EventLogMetricsCollector;
   let context: any;
 
@@ -29,7 +37,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
 
     mockProvider = {
       query: jest.fn()
-    } as any;
+    } as unknown as jest.Mocked<EventLogProvider>;
 
     context = {
       logger: mockLogger,
@@ -40,7 +48,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
 
   describe('Metrics Recording', () => {
     it('should record successful queries in metrics', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           {
             id: 1,
@@ -53,7 +61,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         ],
         totalCount: 1,
         hasMore: false
-      });
+      }));
 
       const initialCount = metricsCollector.getTotalQueryCount();
       expect(initialCount).toBe(0);
@@ -89,7 +97,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
     });
 
     it('should record result count in metrics', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           {
             id: 1,
@@ -118,7 +126,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         ],
         totalCount: 3,
         hasMore: false
-      });
+      }));
 
       await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
 
@@ -127,7 +135,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
     });
 
     it('should accumulate metrics across multiple queries', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           {
             id: 1,
@@ -140,7 +148,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         ],
         totalCount: 1,
         hasMore: false
-      });
+      }));
 
       // First query
       await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, context);
@@ -161,7 +169,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
 
   describe('Metrics in GraphQL Response', () => {
     it('should include metrics in response', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           {
             id: 1,
@@ -174,7 +182,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         ],
         totalCount: 1,
         hasMore: false
-      });
+      }));
 
       const result = await eventLogsResolver(
         null,
@@ -189,11 +197,11 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
     });
 
     it('should reflect cumulative queryCount in response', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [],
         totalCount: 0,
         hasMore: false
-      });
+      }));
 
       // First query
       const result1 = await eventLogsResolver(
@@ -221,14 +229,14 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
     });
 
     it('should show correct resultsReturned', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           { id: 1, timeCreated: new Date(), levelDisplayName: 'Info', providerName: 'System', eventId: 100, message: 'E1' },
           { id: 2, timeCreated: new Date(), levelDisplayName: 'Info', providerName: 'System', eventId: 101, message: 'E2' }
         ],
         totalCount: 2,
         hasMore: false
-      });
+      }));
 
       const result = await eventLogsResolver(
         null,
@@ -244,11 +252,11 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         () =>
           new Promise((resolve) => {
             setTimeout(() => {
-              resolve({
+              resolve(mockResult({
                 entries: [],
                 totalCount: 0,
                 hasMore: false
-              });
+              }));
             }, 50); // 50ms delay
           })
       );
@@ -264,11 +272,11 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
     });
 
     it('should include empty results in metrics', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [],
         totalCount: 0,
         hasMore: false
-      });
+      }));
 
       const result = await eventLogsResolver(
         null,
@@ -286,7 +294,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         eventlogMetricsCollector: undefined
       };
 
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           {
             id: 1,
@@ -299,7 +307,7 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
         ],
         totalCount: 1,
         hasMore: false
-      });
+      }));
 
       const result = await eventLogsResolver(
         null,
@@ -315,21 +323,21 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
   });
 
   describe('Metrics with Validation Errors', () => {
-    it('should not record metrics for validation errors', async () => {
+    it('should record validation errors in metrics', async () => {
       const initialCount = metricsCollector.getTotalQueryCount();
 
       try {
         await eventLogsResolver(null, { logName: '', offset: 0, limit: 100 }, context);
-      } catch (e) {
+      } catch {
         // Expected validation error
       }
 
-      // Validation errors happen before recording, so count should not increase
+      // Validation errors are caught and recorded as failed queries
       const finalCount = metricsCollector.getTotalQueryCount();
-      expect(finalCount).toBe(initialCount);
+      expect(finalCount).toBe(initialCount + 1);
     });
 
-    it('should not record metrics when provider is missing', async () => {
+    it('should record metrics when provider is missing', async () => {
       const contextWithoutProvider = {
         ...context,
         eventlogProvider: undefined
@@ -339,25 +347,25 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
 
       try {
         await eventLogsResolver(null, { logName: 'System', offset: 0, limit: 100 }, contextWithoutProvider);
-      } catch (e) {
+      } catch {
         // Expected error
       }
 
-      // Provider check happens before recording, so count should not increase
+      // Provider errors are caught and recorded as failed queries
       const finalCount = metricsCollector.getTotalQueryCount();
-      expect(finalCount).toBe(initialCount);
+      expect(finalCount).toBe(initialCount + 1);
     });
   });
 
   describe('Metrics Export and Reporting', () => {
     it('should be able to export metrics from integration', async () => {
-      mockProvider.query.mockResolvedValue({
+      mockProvider.query.mockResolvedValue(mockResult({
         entries: [
           { id: 1, timeCreated: new Date(), levelDisplayName: 'Info', providerName: 'System', eventId: 100, message: 'E1' }
         ],
         totalCount: 1,
         hasMore: false
-      });
+      }));
 
       // Run a few queries
       for (let i = 0; i < 3; i++) {

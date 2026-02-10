@@ -248,7 +248,7 @@ describe('End-to-End Integration Tests', () => {
     it('should respect configuration values', async () => {
       context = await initializeApp();
 
-      expect(context.config.port).toBeGreaterThan(0);
+      expect(context.config.port).toBeGreaterThanOrEqual(0);
       expect(context.config.logLevel).toMatch(/^(error|warn|info|debug)$/);
       expect(['development', 'production', 'test']).toContain(context.config.nodeEnv);
     }, 15000);

@@ -65,7 +65,7 @@ describe('Local Machine Name Anonymization', () => {
       const anonymized = anonymizer.anonymizeEntry(entry);
 
       // Both occurrences should be replaced with the same token
-      const tokenMatches = anonymized.message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/g);
+      const tokenMatches = anonymized.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/g);
       expect(tokenMatches).toHaveLength(2);
       expect(tokenMatches![0]).toBe(tokenMatches![1]);
     });
@@ -107,7 +107,7 @@ describe('Local Machine Name Anonymization', () => {
 
       // Should have exactly one ANON_COMPUTER token (the machine name)
       // not multiple ones for "server" etc.
-      const tokens = anonymized.message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/g);
+      const tokens = anonymized.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/g);
       expect(tokens).toHaveLength(1);
     });
   });
@@ -142,8 +142,8 @@ describe('Local Machine Name Anonymization', () => {
       const anon2 = anonymizer.anonymizeEntry(entry2);
 
       // Extract tokens
-      const token1 = anon1.message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
-      const token2 = anon2.message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      const token1 = anon1.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      const token2 = anon2.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
 
       // Should be identical
       expect(token1).toBe(token2);
@@ -157,7 +157,7 @@ describe('Local Machine Name Anonymization', () => {
 
       // Anonymize with first anonymizer
       const anon1 = anonymizer.anonymizeEntry(entry);
-      const token1 = anon1.message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      const token1 = anon1.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
 
       // Save mapping
       const mapping = anonymizer.getMapping();
@@ -167,7 +167,7 @@ describe('Local Machine Name Anonymization', () => {
 
       // Anonymize same entry with new anonymizer
       const anon2 = anonymizer2.anonymizeEntry(entry);
-      const token2 = anon2.message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      const token2 = anon2.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
 
       // Should produce same token
       expect(token1).toBe(token2);
@@ -199,7 +199,7 @@ describe('Local Machine Name Anonymization', () => {
       const anonymized = anonymizer.anonymizeEntry(entry);
 
       // Count ANON tokens - should be 2 (one for machine name, possibly one for WORKSTATION10)
-      const tokens = anonymized.message.match(/\[ANON_/g) || [];
+      const tokens = anonymized.message!.match(/\[ANON_/g) || [];
       expect(tokens.length).toBeGreaterThan(0);
       expect(anonymized.message).not.toContain(localMachineName);
     });
@@ -253,9 +253,9 @@ describe('Local Machine Name Anonymization', () => {
       const anonymized = entries.map(e => anonymizer.anonymizeEntry(e));
 
       // Extract tokens
-      const token1 = anonymized[0].message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
-      const token2 = anonymized[1].message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
-      const token3 = anonymized[2].message.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      const token1 = anonymized[0]!.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      const token2 = anonymized[1]!.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
+      anonymized[2]!.message!.match(/\[ANON_COMPUTER_[A-F0-9]{6}\]/)?.[0];
 
       // First two should match (same machine)
       expect(token1).toBe(token2);

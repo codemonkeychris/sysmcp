@@ -187,6 +187,10 @@ export class SchemaValidator {
     }
 
     if (!types.includes(actualType)) {
+      // JSON Schema 'integer' maps to JavaScript 'number' (with integer check)
+      if (actualType === 'number' && types.includes('integer') && Number.isInteger(data)) {
+        return null;
+      }
       return {
         path,
         message: `Value must be of type: ${types.join(', ')}, got ${actualType}`,

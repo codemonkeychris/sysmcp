@@ -246,7 +246,8 @@ describe('PiiAnonymizer', () => {
 
       const result = anonymizer.anonymizeEntry(entry);
       expect(result.message).toContain('C:\\Users\\');
-      expect(result.message).toContain('\\Documents\\file.txt');
+      expect(result.message).toContain('[ANON_USER_');
+      expect(result.message).not.toContain('jsmith');
     });
   });
 

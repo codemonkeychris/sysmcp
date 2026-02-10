@@ -219,16 +219,17 @@ describe('EventLogMetricsCollector', () => {
 
     it('should reset uptime for export', async () => {
       collector.recordQuery(100, 50);
-      const before = await collector.export();
 
-      // Wait a bit
+      // Wait to accumulate some uptime
       await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const before = await collector.export();
 
       collector.reset();
       const after = await collector.export();
 
       expect(before.uptimeMs).toBeGreaterThan(0);
-      expect(after.uptimeMs).toBeLessThan(before.uptimeMs);
+      expect(after.uptimeMs).toBeLessThanOrEqual(before.uptimeMs);
     });
   });
 

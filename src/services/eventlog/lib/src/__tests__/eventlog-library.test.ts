@@ -152,13 +152,13 @@ describe('EventLogLibrary', () => {
       expect(call).toContain('-MaxEvents 50');
     });
 
-    it('should cap maxResults at 10000', async () => {
+    it('should reject maxResults over 10000', async () => {
       jest.spyOn(PowerShellModule.PowerShellExecutor, 'executeJson').mockResolvedValue([]);
 
-      await library.queryEventLog({ logName: 'System', maxResults: 99999 });
+      const result = await library.queryEventLog({ logName: 'System', maxResults: 99999 });
 
-      const call = (PowerShellModule.PowerShellExecutor.executeJson as jest.Mock).mock.calls[0][0];
-      expect(call).toContain('-MaxEvents 10000');
+      expect(result.success).toBe(false);
+      expect(result.errorMessage).toContain('must be between 1 and 10000');
     });
 
     it('should include eventId filter in command', async () => {
@@ -256,8 +256,9 @@ describe('EventLogLibrary', () => {
 
       expect(result.success).toBe(true);
       expect(result.entries).toHaveLength(50);
-      expect(result.hasNextPage).toBe(false);
-      expect(result.nextOffset).toBeUndefined();
+      // entries.length === maxResults means there may be more
+      expect(result.hasNextPage).toBe(true);
+      expect(result.nextOffset).toBe(50);
     });
 
     it('should indicate hasNextPage when results equal maxResults', async () => {
@@ -296,8 +297,9 @@ describe('EventLogLibrary', () => {
 
       const result = await library.queryEventLog({ logName: 'System', maxResults: 50, offset: 100 });
 
-      expect(result.hasNextPage).toBe(false);
-      expect(result.nextOffset).toBeUndefined();
+      // entries.length === maxResults means there may be more
+      expect(result.hasNextPage).toBe(true);
+      expect(result.nextOffset).toBe(150);
     });
 
     it('should not throw error on validation failure - should return error result', async () => {
