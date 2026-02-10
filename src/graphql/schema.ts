@@ -198,10 +198,38 @@ export const typeDefs = `#graphql
     metrics: FileSearchQueryMetrics!
   }
 
+  """Permission level for service access control"""
+  enum PermissionLevel {
+    """Service is disabled and cannot be used"""
+    DISABLED
+    """Read-only access (queries allowed, mutations denied)"""
+    READ_ONLY
+    """Full read-write access"""
+    READ_WRITE
+  }
+
+  """Configuration state of a service"""
+  type ServiceConfig {
+    """Service identifier"""
+    serviceId: String!
+    """Whether the service is enabled"""
+    enabled: Boolean!
+    """Current permission level"""
+    permissionLevel: PermissionLevel!
+    """Whether PII anonymization is enabled"""
+    enableAnonymization: Boolean!
+  }
+
   type Query {
     services: [Service!]!
     service(name: String!): Service
     health: HealthStatus!
+
+    """Get configuration for a specific service"""
+    serviceConfig(serviceId: String!): ServiceConfig!
+
+    """Get configuration for all known services"""
+    allServiceConfigs: [ServiceConfig!]!
 
     """
     Query Windows event logs with filtering and pagination.
@@ -269,5 +297,20 @@ export const typeDefs = `#graphql
     startService(name: String!): ServiceOperationResult!
     stopService(name: String!): ServiceOperationResult!
     restartService(name: String!): ServiceOperationResult!
+
+    """Enable a service (sets enabled=true, permissionLevel=READ_ONLY)"""
+    enableService(serviceId: String!): ServiceConfig!
+
+    """Disable a service (sets enabled=false, permissionLevel=DISABLED)"""
+    disableService(serviceId: String!): ServiceConfig!
+
+    """Set the permission level for a service"""
+    setPermissionLevel(serviceId: String!, level: PermissionLevel!): ServiceConfig!
+
+    """Set PII anonymization toggle for a service"""
+    setPiiAnonymization(serviceId: String!, enabled: Boolean!): ServiceConfig!
+
+    """Reset a service configuration to secure defaults"""
+    resetServiceConfig(serviceId: String!): ServiceConfig!
   }
 `;
