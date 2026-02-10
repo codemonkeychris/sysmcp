@@ -11,6 +11,7 @@ import { ProtocolHandler } from './protocol-handler';
 import { ServiceManager } from './service-manager';
 import { ToolExecutor } from './tool-executor';
 import { EventLogMcpService } from './eventlog-service';
+import { FileSearchMcpService } from './filesearch-service';
 
 const logger = {
   info: (msg: string) => console.error(`[INFO] ${msg}`),
@@ -31,6 +32,13 @@ function main() {
     );
     serviceManager.registerService(eventLogService);
     logger.info('EventLog service registered');
+
+    // Register FileSearch service
+    const fileSearchService = new FileSearchMcpService(
+      process.env.FILESEARCH_API_URL || 'http://localhost:3000/graphql'
+    );
+    serviceManager.registerService(fileSearchService);
+    logger.info('FileSearch service registered');
 
     // Initialize tool executor
     const toolExecutor = new ToolExecutor(serviceManager);
