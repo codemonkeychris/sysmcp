@@ -22,8 +22,8 @@ describe('EventLogConfigManager', () => {
 
   describe('Initialization', () => {
     it('should initialize with default MVP values', () => {
-      expect(manager.isEnabled()).toBe(true);
-      expect(manager.getPermissionLevel()).toBe('read-only');
+      expect(manager.isEnabled()).toBe(false);
+      expect(manager.getPermissionLevel()).toBe('disabled');
       expect(manager.getMaxResults()).toBe(10000);
       expect(manager.getTimeoutMs()).toBe(30000);
       expect(manager.isAnonymizationEnabled()).toBe(true);
@@ -67,11 +67,11 @@ describe('EventLogConfigManager', () => {
 
   describe('Getter Methods', () => {
     it('should return enabled status', () => {
-      expect(manager.isEnabled()).toBe(true);
+      expect(manager.isEnabled()).toBe(false);
     });
 
     it('should return permission level', () => {
-      expect(manager.getPermissionLevel()).toBe('read-only');
+      expect(manager.getPermissionLevel()).toBe('disabled');
     });
 
     it('should return max results', () => {
@@ -93,8 +93,8 @@ describe('EventLogConfigManager', () => {
     it('should return complete config object', () => {
       const config = manager.getConfig();
 
-      expect(config.enabled).toBe(true);
-      expect(config.permissionLevel).toBe('read-only');
+      expect(config.enabled).toBe(false);
+      expect(config.permissionLevel).toBe('disabled');
       expect(config.maxResults).toBe(10000);
       expect(config.timeoutMs).toBe(30000);
       expect(config.enableAnonymization).toBe(true);
@@ -212,8 +212,8 @@ describe('EventLogConfigManager', () => {
       manager.resetToDefaults();
 
       // Verify defaults restored
-      expect(manager.isEnabled()).toBe(true);
-      expect(manager.getPermissionLevel()).toBe('read-only');
+      expect(manager.isEnabled()).toBe(false);
+      expect(manager.getPermissionLevel()).toBe('disabled');
       expect(manager.getMaxResults()).toBe(10000);
       expect(manager.getTimeoutMs()).toBe(30000);
       expect(manager.isAnonymizationEnabled()).toBe(true);
@@ -271,8 +271,8 @@ describe('EventLogConfigManager', () => {
       resetConfigManager();
       const manager = getConfigManager();
 
-      expect(manager.isEnabled()).toBe(true);
-      expect(manager.getPermissionLevel()).toBe('read-only');
+      expect(manager.isEnabled()).toBe(false);
+      expect(manager.getPermissionLevel()).toBe('disabled');
     });
 
     it('should allow setting global manager', () => {
@@ -297,22 +297,22 @@ describe('EventLogConfigManager', () => {
 
       const manager2 = getConfigManager();
       expect(manager2).not.toBe(manager1);
-      expect(manager2.isEnabled()).toBe(true); // New instance with defaults
+      expect(manager2.isEnabled()).toBe(false); // New instance with defaults
     });
   });
 
   describe('Configuration Scenarios (Future UI Integration)', () => {
     it('should support workflow: initial state to disabled', () => {
-      expect(manager.isEnabled()).toBe(true);
-
-      // User disables service via System Tray UI
-      manager.setEnabled(false);
-
       expect(manager.isEnabled()).toBe(false);
+
+      // User enables service via System Tray UI
+      manager.setEnabled(true);
+
+      expect(manager.isEnabled()).toBe(true);
     });
 
     it('should support workflow: permission level change', () => {
-      expect(manager.getPermissionLevel()).toBe('read-only');
+      expect(manager.getPermissionLevel()).toBe('disabled');
 
       // User upgrades to read-write via System Tray UI
       manager.setPermissionLevel('read-write');
@@ -345,7 +345,7 @@ describe('EventLogConfigManager', () => {
       manager.resetToDefaults();
 
       // Settings should be back to defaults
-      expect(manager.getPermissionLevel()).toBe('read-only');
+      expect(manager.getPermissionLevel()).toBe('disabled');
       expect(manager.getMaxResults()).toBe(10000);
     });
   });
@@ -372,9 +372,9 @@ describe('EventLogConfigManager', () => {
 
     it('should preserve other settings when one is changed', () => {
       manager.setLogLevel('debug');
-      expect(manager.getPermissionLevel()).toBe('read-only'); // Unchanged
+      expect(manager.getPermissionLevel()).toBe('disabled'); // Unchanged
 
-      manager.setPermissionLevel('disabled');
+      manager.setPermissionLevel('read-write');
       expect(manager.getLogLevel()).toBe('debug'); // Unchanged
     });
   });

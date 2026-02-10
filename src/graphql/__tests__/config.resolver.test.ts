@@ -40,8 +40,8 @@ describe('Config Resolver', () => {
       const result = configResolver.Query.serviceConfig(null, { serviceId: 'eventlog' }, context);
 
       expect(result.serviceId).toBe('eventlog');
-      expect(result.enabled).toBe(true);
-      expect(result.permissionLevel).toBe(GQLPermissionLevel.READ_ONLY);
+      expect(result.enabled).toBe(false);
+      expect(result.permissionLevel).toBe(GQLPermissionLevel.DISABLED);
       expect(result.enableAnonymization).toBe(true);
     });
 
@@ -50,7 +50,7 @@ describe('Config Resolver', () => {
       const result = configResolver.Query.serviceConfig(null, { serviceId: 'filesearch' }, context);
 
       expect(result.serviceId).toBe('filesearch');
-      expect(result.enabled).toBe(true);
+      expect(result.enabled).toBe(false);
     });
 
     it('should throw for unknown service', () => {
@@ -188,7 +188,7 @@ describe('Config Resolver', () => {
         expect.objectContaining({
           action: 'permission.change',
           serviceId: 'filesearch',
-          previousValue: 'read-only',
+          previousValue: 'disabled',
           newValue: 'read-write',
         })
       );
