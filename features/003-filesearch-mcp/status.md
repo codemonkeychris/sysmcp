@@ -1,7 +1,7 @@
 # Feature 003: FileSearch MCP — Status Tracking
 
 **Feature**: 003-filesearch-mcp  
-**Status**: 33% Complete (8/24 tasks)  
+**Status**: 54% Complete (13/24 tasks)  
 **Created**: 2026-02-10  
 **Git Branch**: feature/003-filesearch-mcp  
 **Last Updated**: 2026-02-10
@@ -14,11 +14,11 @@
 |-------|-------|----------|--------|
 | Phase 0: POC & Setup | 3 | 3 | ✅ Complete |
 | Phase 1: Core Query Engine | 5 | 5 | ✅ Complete |
-| Phase 2: GraphQL & MCP Integration | 5 | 0 | ⬜ Not Started |
+| Phase 2: GraphQL & MCP Integration | 5 | 5 | ✅ Complete |
 | Phase 3: Security & Hardening | 5 | 0 | ⬜ Not Started |
 | Phase 4: Documentation & Polish | 3 | 0 | ⬜ Not Started |
 | Phase 5: Real-World Validation | 3 | 0 | ⬜ Not Started |
-| **Total** | **24** | **8** | **33%** |
+| **Total** | **24** | **13** | **54%** |
 
 ---
 
@@ -37,11 +37,11 @@
 - [x] 1.5: FileSearch Provider
 
 ### Phase 2: GraphQL & MCP Integration
-- [ ] 2.1: GraphQL Schema Extension
-- [ ] 2.2: GraphQL Resolver
-- [ ] 2.3: Server Integration
-- [ ] 2.4: MCP Service (IService Implementation)
-- [ ] 2.5: Integration Testing
+- [x] 2.1: GraphQL Schema Extension
+- [x] 2.2: GraphQL Resolver
+- [x] 2.3: Server Integration
+- [x] 2.4: MCP Service (IService Implementation)
+- [x] 2.5: Integration Testing
 
 ### Phase 3: Security & Hardening
 - [ ] 3.1: SQL Injection Security Test Suite
