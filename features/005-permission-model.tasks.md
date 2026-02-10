@@ -10,7 +10,7 @@
 
 ## Phase 1: Security Foundation (Tasks 1.0–1.2)
 
-### Task 1.0: Security Types & PermissionChecker ⬜
+### Task 1.0: Security Types & PermissionChecker ✅
 **FR**: FR-1, FR-9 | **Critical Path**: Yes | **Depends on**: None
 
 **Create**:
@@ -41,7 +41,7 @@
 
 ---
 
-### Task 1.1: Test Helpers ⬜
+### Task 1.1: Test Helpers ✅
 **FR**: FR-9 | **Critical Path**: Yes | **Depends on**: Task 1.0
 
 **Create**:
@@ -63,7 +63,7 @@
 
 ---
 
-### Task 1.2: ConfigStore (Persistent Configuration) ⬜
+### Task 1.2: ConfigStore (Persistent Configuration) ✅
 **FR**: FR-4, FR-5 | **Critical Path**: Yes | **Depends on**: None (parallel with 1.0)
 
 **Create**:
@@ -93,7 +93,7 @@
 
 ## Phase 2: Audit & Middleware (Tasks 2.0–2.1)
 
-### Task 2.0: AuditLogger ⬜
+### Task 2.0: AuditLogger ✅
 **FR**: FR-7 | **Critical Path**: No (can parallel with 2.1) | **Depends on**: None
 
 **Create**:
@@ -121,7 +121,7 @@
 
 ---
 
-### Task 2.1: Permission Middleware (Apollo Plugin) ⬜
+### Task 2.1: Permission Middleware (Apollo Plugin) ✅
 **FR**: FR-2 | **Critical Path**: Yes | **Depends on**: Task 1.0
 
 **Create**:
@@ -153,7 +153,7 @@
 
 ## Phase 3: GraphQL API (Tasks 3.0–3.2)
 
-### Task 3.0: GraphQL Schema Extensions ⬜
+### Task 3.0: GraphQL Schema Extensions ✅
 **FR**: FR-6 | **Critical Path**: Yes | **Depends on**: None (parallel with Phase 2)
 
 **Modify**:
@@ -178,7 +178,7 @@
 
 ---
 
-### Task 3.1: Config Resolver ⬜
+### Task 3.1: Config Resolver ✅
 **FR**: FR-6, FR-7, FR-8 | **Critical Path**: Yes | **Depends on**: Tasks 1.0, 1.2, 2.0, 3.0
 
 **Create**:
@@ -211,7 +211,7 @@
 
 ---
 
-### Task 3.2: Resolver Composition ⬜
+### Task 3.2: Resolver Composition ✅
 **FR**: FR-6 | **Critical Path**: Yes | **Depends on**: Task 3.1
 
 **Modify**:
@@ -233,7 +233,7 @@
 
 ## Phase 4: Defense-in-Depth & Server Integration (Tasks 4.0–4.1)
 
-### Task 4.0: Per-Resolver Permission Checks ⬜
+### Task 4.0: Per-Resolver Permission Checks ✅
 **FR**: FR-3 | **Critical Path**: Yes | **Depends on**: Task 1.0
 
 **Modify**:
@@ -257,7 +257,7 @@
 
 ---
 
-### Task 4.1: Server Integration ⬜
+### Task 4.1: Server Integration ✅
 **FR**: FR-4, FR-5, FR-8 | **Critical Path**: Yes | **Depends on**: Tasks 1.0, 1.2, 2.0, 2.1, 3.2, 4.0
 
 **Modify**:
@@ -286,7 +286,7 @@
 
 ## Phase 5: Secure Defaults & Test Updates (Tasks 5.0–5.1)
 
-### Task 5.0: Change Config Manager Defaults ⬜
+### Task 5.0: Change Config Manager Defaults ✅
 **FR**: FR-5 | **Critical Path**: Yes | **Depends on**: Tasks 1.1, 4.1
 
 **Modify**:
@@ -308,7 +308,7 @@
 
 ---
 
-### Task 5.1: Update Existing Tests ⬜
+### Task 5.1: Update Existing Tests ✅
 **FR**: FR-9 | **Critical Path**: Yes | **Depends on**: Tasks 1.1, 5.0
 
 **Modify**:
@@ -331,7 +331,7 @@
 
 ## Phase 6: Integration Testing (Task 6.0)
 
-### Task 6.0: Integration Tests ⬜
+### Task 6.0: Integration Tests ✅
 **FR**: All | **Critical Path**: No | **Depends on**: All previous tasks
 
 **Create**:
