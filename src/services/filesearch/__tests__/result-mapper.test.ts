@@ -182,6 +182,30 @@ describe('mapOleDbRows', () => {
     expect(entries[1].fileName).toBe('b.pdf');
   });
 
+  it('should handle OLE DB uppercase property names', () => {
+    const row = {
+      'SYSTEM.ITEMPATHDISPLAY': 'C:\\Users\\test\\report.pdf',
+      'SYSTEM.FILENAME': 'report.pdf',
+      'SYSTEM.FILEEXTENSION': '.pdf',
+      'SYSTEM.SIZE': 2048,
+      'SYSTEM.DATEMODIFIED': '2024-01-15T10:30:00Z',
+      'SYSTEM.DATECREATED': '2024-01-01T08:00:00Z',
+      'SYSTEM.AUTHOR': 'Jane Smith',
+      'SYSTEM.TITLE': 'Report',
+      'SYSTEM.KEYWORDS': 'finance;2024'
+    };
+
+    const entry = mapOleDbRow(row);
+
+    expect(entry.path).toBe('C:\\Users\\test\\report.pdf');
+    expect(entry.fileName).toBe('report.pdf');
+    expect(entry.fileType).toBe('.pdf');
+    expect(entry.size).toBe(2048);
+    expect(entry.author).toBe('Jane Smith');
+    expect(entry.title).toBe('Report');
+    expect(entry.tags).toEqual(['finance', '2024']);
+  });
+
   it('should handle empty array', () => {
     expect(mapOleDbRows([])).toEqual([]);
   });

@@ -64,22 +64,31 @@ function normalizeFileExtension(ext: unknown): string {
 }
 
 /**
- * Map a single OLE DB row to a FileSearchEntry
+ * Map a single OLE DB row to a FileSearchEntry.
+ * 
+ * SECURITY: OLE DB returns property names in UPPERCASE.
+ * We normalize keys to handle both case variants.
  *
  * @param row - Raw OLE DB recordset row with Windows Search property names
  * @returns Typed FileSearchEntry
  */
 export function mapOleDbRow(row: Record<string, unknown>): FileSearchEntry {
+  // Normalize keys to handle OLE DB uppercase property names
+  const r: Record<string, unknown> = {};
+  for (const key of Object.keys(row)) {
+    r[key.toUpperCase()] = row[key];
+  }
+
   return {
-    path: String(row['System.ItemPathDisplay'] ?? ''),
-    fileName: String(row['System.FileName'] ?? ''),
-    fileType: normalizeFileExtension(row['System.FileExtension']),
-    size: parseNumber(row['System.Size']),
-    dateModified: parseDate(row['System.DateModified']),
-    dateCreated: parseDate(row['System.DateCreated']),
-    author: parseMultiValuedFirst(row['System.Author']),
-    title: row['System.Title'] != null ? String(row['System.Title']) : undefined,
-    tags: parseMultiValuedString(row['System.Keywords'])
+    path: String(r['SYSTEM.ITEMPATHDISPLAY'] ?? ''),
+    fileName: String(r['SYSTEM.FILENAME'] ?? ''),
+    fileType: normalizeFileExtension(r['SYSTEM.FILEEXTENSION']),
+    size: parseNumber(r['SYSTEM.SIZE']),
+    dateModified: parseDate(r['SYSTEM.DATEMODIFIED']),
+    dateCreated: parseDate(r['SYSTEM.DATECREATED']),
+    author: parseMultiValuedFirst(r['SYSTEM.AUTHOR']),
+    title: r['SYSTEM.TITLE'] != null ? String(r['SYSTEM.TITLE']) : undefined,
+    tags: parseMultiValuedString(r['SYSTEM.KEYWORDS'])
   };
 }
 
