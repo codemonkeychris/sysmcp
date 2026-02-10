@@ -24,7 +24,7 @@ import { KNOWN_SERVICE_IDS } from '../security/types';
 /**
  * Resolver context expected by config resolvers
  */
-interface ConfigResolverContext {
+export interface ConfigResolverContext {
   configStore?: ConfigStore;
   auditLogger?: AuditLogger;
   eventlogConfigManager?: EventLogConfigManager;
