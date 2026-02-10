@@ -70,6 +70,11 @@ export class ScopeValidator {
       return { valid: false, normalizedPath: '', error: 'Path cannot be empty' };
     }
 
+    // SECURITY: Reject paths with null bytes
+    if (inputPath.includes('\0')) {
+      return { valid: false, normalizedPath: '', error: 'Path contains invalid characters' };
+    }
+
     // SECURITY: Reject UNC paths for MVP
     if (inputPath.startsWith('\\\\') || inputPath.startsWith('//')) {
       return {
