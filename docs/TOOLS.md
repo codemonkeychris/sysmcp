@@ -1,10 +1,17 @@
-# EventLog Tools Documentation
+# Tools Documentation
 
 ## Overview
 
-The EventLog tools expose Windows Event Log functionality through the MCP protocol. These tools allow Claude and other MCP clients to query, filter, and analyze system events.
+SysMCP exposes system resource tools through the MCP protocol. These tools allow Claude and other MCP clients to query, filter, and analyze system data.
 
-## Available Tools
+## Available Services
+
+- [EventLog Tools](#eventlog-tools)
+- [FileSearch Tools](#filesearch-tools)
+
+---
+
+## EventLog Tools
 
 ### 1. eventlog_query
 
@@ -451,8 +458,241 @@ Each EventLog entry includes:
 
 ---
 
+## FileSearch Tools
+
+The FileSearch tools expose Windows Search Indexer functionality through the MCP protocol.
+
+### 1. filesearch_query
+
+Search files indexed by Windows Search with full-text search, metadata filters, and pagination.
+
+#### Parameters
+
+| Name | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `searchText` | string | ❌ No | — | Full-text search query |
+| `searchMode` | string | ❌ No | CONTAINS | CONTAINS (exact) or FREETEXT (natural language) |
+| `path` | string | ❌ No | — | Restrict search to a directory path |
+| `fileName` | string | ❌ No | — | File name pattern with wildcards (`*` and `?`) |
+| `fileType` | string | ❌ No | — | File extension filter (e.g., .pdf, .docx) |
+| `author` | string | ❌ No | — | Filter by document author |
+| `minSize` | number | ❌ No | — | Minimum file size in bytes |
+| `maxSize` | number | ❌ No | — | Maximum file size in bytes |
+| `modifiedAfter` | string | ❌ No | — | ISO 8601 date - files modified after this date |
+| `modifiedBefore` | string | ❌ No | — | ISO 8601 date - files modified before this date |
+| `limit` | number | ❌ No | 25 | Maximum results (1-1000) |
+| `offset` | number | ❌ No | 0 | Pagination offset |
+
+#### Schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "searchText": {
+      "type": "string",
+      "description": "Full-text search query"
+    },
+    "searchMode": {
+      "type": "string",
+      "enum": ["CONTAINS", "FREETEXT"],
+      "description": "Search mode: CONTAINS (exact phrase) or FREETEXT (natural language)"
+    },
+    "path": {
+      "type": "string",
+      "description": "Restrict search to a directory path (e.g., C:\\Users\\Documents)"
+    },
+    "fileName": {
+      "type": "string",
+      "description": "File name pattern with wildcards (* and ?)"
+    },
+    "fileType": {
+      "type": "string",
+      "description": "File extension filter (e.g., .pdf, .docx, .txt)"
+    },
+    "author": {
+      "type": "string",
+      "description": "Filter by document author"
+    },
+    "minSize": {
+      "type": "number",
+      "description": "Minimum file size in bytes"
+    },
+    "maxSize": {
+      "type": "number",
+      "description": "Maximum file size in bytes"
+    },
+    "modifiedAfter": {
+      "type": "string",
+      "description": "ISO 8601 timestamp - files modified after this date"
+    },
+    "modifiedBefore": {
+      "type": "string",
+      "description": "ISO 8601 timestamp - files modified before this date"
+    },
+    "limit": {
+      "type": "number",
+      "description": "Maximum number of results to return (default: 25, max: 1000)"
+    },
+    "offset": {
+      "type": "number",
+      "description": "Skip first N results for pagination (default: 0)"
+    }
+  }
+}
+```
+
+#### Response Format
+
+```json
+{
+  "success": true,
+  "data": {
+    "files": [
+      {
+        "path": "C:\\Users\\user_a1b2c3\\Documents\\report.pdf",
+        "fileName": "report.pdf",
+        "fileType": ".pdf",
+        "size": 245760,
+        "dateModified": "2024-02-10T10:30:00Z",
+        "dateCreated": "2024-01-15T08:00:00Z",
+        "author": "user_a1b2c3",
+        "title": "Quarterly Report",
+        "tags": ["finance", "Q4"]
+      }
+    ],
+    "totalCount": 42,
+    "returned": 25,
+    "pageInfo": {
+      "hasNextPage": true,
+      "hasPreviousPage": false
+    },
+    "metrics": {
+      "queryCount": 1,
+      "responseDurationMs": 45,
+      "resultsReturned": 25
+    }
+  }
+}
+```
+
+#### Example Requests
+
+**Search by text:**
+```json
+{
+  "searchText": "quarterly report",
+  "limit": 50
+}
+```
+
+**Search by file type and date:**
+```json
+{
+  "fileType": ".pdf",
+  "modifiedAfter": "2024-06-01T00:00:00Z",
+  "limit": 100
+}
+```
+
+**Search by name pattern in path:**
+```json
+{
+  "fileName": "invoice*",
+  "path": "C:\\Users\\Documents\\Finance",
+  "fileType": ".xlsx"
+}
+```
+
+#### Error Cases
+
+- **Invalid limit**: Must be 1-1000
+- **Scope violation**: Path outside configured allowed paths
+- **Search failed**: Windows Search service unavailable
+- **Service disabled**: FileSearch service is disabled
+
+#### Performance
+
+- Simple query: <200ms
+- Complex query (text + filters): <400ms
+- Pagination within 500 offset: <200ms
+
+---
+
+## Usage Patterns
+
+### Pattern 1: Find Recent Documents
+
+```json
+{
+  "searchText": "project plan",
+  "fileType": ".docx",
+  "modifiedAfter": "2024-01-01T00:00:00Z",
+  "limit": 20
+}
+```
+
+### Pattern 2: Find Large Files
+
+```json
+{
+  "minSize": 104857600,
+  "limit": 50
+}
+```
+
+### Pattern 3: Natural Language Search
+
+```json
+{
+  "searchText": "meeting notes about budget planning",
+  "searchMode": "FREETEXT",
+  "limit": 10
+}
+```
+
+### Pattern 4: Pagination Loop
+
+```
+// First call
+{ "searchText": "report", "limit": 25, "offset": 0 }
+Response: {"totalCount": 150, "pageInfo": {"hasNextPage": true}, ...}
+
+// Second call
+{ "searchText": "report", "limit": 25, "offset": 25 }
+Response: {"totalCount": 150, "pageInfo": {"hasNextPage": true, "hasPreviousPage": true}, ...}
+
+// Continue until hasNextPage = false
+```
+
+---
+
+## Integration Guide
+
+### With Claude
+
+```
+You: "Find all PDF files modified this month"
+
+Claude calls:
+{
+  "method": "tools/call",
+  "name": "filesearch_query",
+  "arguments": {
+    "fileType": ".pdf",
+    "modifiedAfter": "2024-02-01T00:00:00Z"
+  }
+}
+
+Receives: List of matching PDF files with metadata
+Returns: Summary of files found
+```
+
+---
+
 ## Related Documentation
 
 - [MCP Protocol Documentation](./MCP-PROTOCOL.md)
 - [Extension Guide](./EXTENSION-GUIDE.md)
 - [Troubleshooting Guide](./TROUBLESHOOTING.md)
+- [FileSearch API Reference](../src/services/filesearch/API.md)

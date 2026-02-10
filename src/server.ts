@@ -11,6 +11,9 @@ import { Config } from './config';
 import { typeDefs } from './graphql/schema';
 import { createResolvers } from './graphql/resolvers';
 import { EventLogProvider } from './services/eventlog/provider';
+import { FileSearchProvider } from './services/filesearch/provider';
+import { PathAnonymizer } from './services/filesearch/path-anonymizer';
+import { PiiAnonymizer } from './services/eventlog/lib/src/anonymizer';
 
 /**
  * Server instance interface
@@ -51,6 +54,8 @@ class ServerImpl implements Server {
   private httpServer?: ReturnType<Express['listen']>;
   private apolloServer?: ApolloServer;
   private eventlogProvider?: EventLogProvider;
+  private fileSearchProvider?: FileSearchProvider;
+  private fileSearchAnonymizer?: PathAnonymizer;
   private startTime: number = Date.now();
   private isShuttingDown = false;
 
@@ -134,6 +139,27 @@ class ServerImpl implements Server {
       this.logger.warn('Failed to start EventLog provider', { error: message });
     }
 
+    // Initialize FileSearch provider
+    this.fileSearchProvider = new FileSearchProvider(this.logger, {
+      enabled: true,
+      maxResults: 10000,
+      timeoutMs: 30000,
+      anonymize: true,
+      allowedPaths: [],
+    });
+
+    // Start the FileSearch provider
+    try {
+      await this.fileSearchProvider.start();
+      this.logger.info('FileSearch provider started');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn('Failed to start FileSearch provider', { error: message });
+    }
+
+    // Initialize FileSearch anonymizer
+    this.fileSearchAnonymizer = new PathAnonymizer(new PiiAnonymizer());
+
     // Initialize Apollo Server for GraphQL
     this.apolloServer = new ApolloServer({
       typeDefs,
@@ -147,6 +173,8 @@ class ServerImpl implements Server {
         eventlogAnonymizer: undefined,
         eventlogMetricsCollector: undefined,
         eventlogMappingPath: undefined,
+        fileSearchProvider: this.fileSearchProvider,
+        fileSearchAnonymizer: this.fileSearchAnonymizer,
       }),
     });
 
@@ -258,6 +286,17 @@ class ServerImpl implements Server {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn('Error stopping EventLog provider', { error: message });
+      }
+    }
+
+    // Stop FileSearch provider if running
+    if (this.fileSearchProvider) {
+      try {
+        await this.fileSearchProvider.stop();
+        this.logger.debug('FileSearch provider stopped');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn('Error stopping FileSearch provider', { error: message });
       }
     }
 

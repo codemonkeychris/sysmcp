@@ -15,6 +15,7 @@ import {
   ServiceStateEnum,
 } from './types';
 import { eventlogResolver } from './eventlog.resolver';
+import { filesearchResolver } from './filesearch.resolver';
 
 /**
  * Convert backend Service to GraphQL Service type
@@ -98,6 +99,7 @@ export const resolvers = {
     },
 
     ...eventlogResolver.Query,
+    ...filesearchResolver.Query,
   },
 
   Mutation: {

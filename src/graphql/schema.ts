@@ -133,6 +133,71 @@ export const typeDefs = `#graphql
     metrics: EventLogQueryMetrics!
   }
 
+  """File search mode"""
+  enum FileSearchMode {
+    """Exact phrase matching"""
+    CONTAINS
+    """Natural language search"""
+    FREETEXT
+  }
+
+  """A single file search result entry"""
+  type FileSearchEntry {
+    """Full path to the file (may be anonymized)"""
+    path: String!
+
+    """File name"""
+    fileName: String!
+
+    """File extension (e.g., .pdf, .docx)"""
+    fileType: String!
+
+    """File size in bytes"""
+    size: Int!
+
+    """Last modified date (ISO 8601)"""
+    dateModified: String!
+
+    """Creation date (ISO 8601)"""
+    dateCreated: String!
+
+    """Document author (may be anonymized)"""
+    author: String
+
+    """Document title"""
+    title: String
+
+    """Tags/keywords associated with the file"""
+    tags: [String!]!
+  }
+
+  """Metrics collected during file search query execution"""
+  type FileSearchQueryMetrics {
+    """Total number of queries executed by this provider"""
+    queryCount: Int!
+
+    """Time taken to execute the query in milliseconds"""
+    responseDurationMs: Int!
+
+    """Number of results returned in this query"""
+    resultsReturned: Int!
+  }
+
+  """Complete result of a file search query"""
+  type FileSearchResult {
+    """List of file search entries matching the query"""
+    files: [FileSearchEntry!]!
+
+    """Pagination metadata for navigating results"""
+    pageInfo: PageInfo!
+
+    """Total number of results across all pages"""
+    totalCount: Int!
+
+    """Performance and usage metrics for this query"""
+    metrics: FileSearchQueryMetrics!
+  }
+
   type Query {
     services: [Service!]!
     service(name: String!): Service
@@ -161,6 +226,42 @@ export const typeDefs = `#graphql
       endTime: String
       messageContains: String
     ): EventLogResult!
+
+    """
+    Search files indexed by Windows Search with filtering and pagination.
+
+    Parameters:
+    - searchText: Full-text search query (optional)
+    - searchMode: Search mode - CONTAINS (exact) or FREETEXT (natural language) (default: CONTAINS)
+    - path: Restrict search to a directory path (optional)
+    - fileName: File name pattern with wildcards (* and ?) (optional)
+    - fileType: File extension filter (e.g., '.pdf', '.docx') (optional)
+    - author: Filter by document author (optional)
+    - minSize: Minimum file size in bytes (optional)
+    - maxSize: Maximum file size in bytes (optional)
+    - modifiedAfter: ISO 8601 date - files modified after this date (optional)
+    - modifiedBefore: ISO 8601 date - files modified before this date (optional)
+    - createdAfter: ISO 8601 date - files created after this date (optional)
+    - createdBefore: ISO 8601 date - files created before this date (optional)
+    - limit: Maximum number of results to return (default: 25, max: 1000)
+    - offset: Number of results to skip for pagination (default: 0)
+    """
+    fileSearch(
+      searchText: String
+      searchMode: FileSearchMode = CONTAINS
+      path: String
+      fileName: String
+      fileType: String
+      author: String
+      minSize: Int
+      maxSize: Int
+      modifiedAfter: String
+      modifiedBefore: String
+      createdAfter: String
+      createdBefore: String
+      limit: Int = 25
+      offset: Int = 0
+    ): FileSearchResult!
   }
 
   type Mutation {
