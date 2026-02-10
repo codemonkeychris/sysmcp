@@ -52,8 +52,8 @@ export class FileSearchConfigManager {
    * Initialize the configuration manager
    *
    * MVP defaults:
-   * - Service is enabled
-   * - Permission level is read-only
+   * - Service is disabled (secure default)
+   * - Permission level is disabled
    * - Max results: 10000
    * - Timeout: 30000ms (30s)
    * - Anonymization: enabled
@@ -62,8 +62,8 @@ export class FileSearchConfigManager {
    */
   constructor(initialConfig?: FileSearchConfig) {
     this.config = initialConfig || {
-      enabled: true,
-      permissionLevel: 'read-only',
+      enabled: false,
+      permissionLevel: 'disabled',
       maxResults: 10000,
       timeoutMs: 30000,
       enableAnonymization: true,
@@ -151,8 +151,8 @@ export class FileSearchConfigManager {
 
   public resetToDefaults(): void {
     this.config = {
-      enabled: true,
-      permissionLevel: 'read-only',
+      enabled: false,
+      permissionLevel: 'disabled',
       maxResults: 10000,
       timeoutMs: 30000,
       enableAnonymization: true,

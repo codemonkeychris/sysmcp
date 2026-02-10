@@ -81,8 +81,8 @@ export class EventLogConfigManager {
    * Initialize the configuration manager
    *
    * MVP: Hardcoded values are used
-   * - Service is enabled
-   * - Permission level is read-only
+   * - Service is disabled (secure default)
+   * - Permission level is disabled
    * - Max results: 10000
    * - Timeout: 30000ms (30s)
    * - Anonymization: enabled
@@ -95,8 +95,8 @@ export class EventLogConfigManager {
    */
   constructor(initialConfig?: EventLogConfig) {
     this.config = initialConfig || {
-      enabled: true,
-      permissionLevel: 'read-only',
+      enabled: false,
+      permissionLevel: 'disabled',
       maxResults: 10000,
       timeoutMs: 30000,
       enableAnonymization: true,
@@ -270,8 +270,8 @@ export class EventLogConfigManager {
    */
   public resetToDefaults(): void {
     this.config = {
-      enabled: true,
-      permissionLevel: 'read-only',
+      enabled: false,
+      permissionLevel: 'disabled',
       maxResults: 10000,
       timeoutMs: 30000,
       enableAnonymization: true,
