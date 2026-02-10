@@ -119,12 +119,24 @@ Implement a complete permission enforcement system that makes the existing permi
 - Config managers emit change events (or call a hook) when settings change → `ConfigStore` persists
 - Config managers' default values change from `enabled: true` to `enabled: false` (secure defaults)
 
+### FR-9: Test Mode for Permission Overrides
+
+- The `PermissionChecker` supports a **test mode** that allows tests to force service enabled/disabled state without modifying config managers or persisted config
+- Test mode is activated via a static/factory method: `PermissionChecker.withTestOverrides(overrides)` or by passing a test overrides map to the constructor
+- Override map shape: `{ [serviceId: string]: { enabled?: boolean, permissionLevel?: PermissionLevel } }`
+- When an override exists for a service, it takes precedence over the config manager's value
+- Test overrides are **in-memory only** — never persisted, never audit-logged
+- A `clearTestOverrides()` method resets to normal behavior
+- Enabled only when `NODE_ENV === 'test'` — in production, override methods throw an error
+- This prevents the need to mock config managers in every test and avoids the risk of changing defaults breaking 383+ existing tests
+- Existing tests can use a shared test helper (e.g., `enableAllServicesForTest()`) that sets overrides for all known services
+
 ## Non-Functional Requirements
 
 - **Performance**: Permission checks must complete in <1ms (in-memory lookups)
 - **Reliability**: Config file corruption must not crash the service; fall back to secure defaults
 - **Security**: Permission enforcement must be non-bypassable — middleware + per-service checks
-- **Testability**: Permission checker must be testable in isolation with no file system dependencies
+- **Testability**: Permission checker must be testable in isolation with no file system dependencies; test mode allows forcing permission state
 - **Backward compatibility**: Existing GraphQL queries continue to work (just subject to permission checks)
 - **Test coverage**: >80% code coverage on all new modules; 100% on permission enforcement logic
 

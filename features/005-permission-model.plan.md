@@ -80,6 +80,7 @@ export interface PermissionChecker {
 
 **Logic**:
 - Reads current config from the appropriate config manager (looked up by serviceId)
+- **If a test override exists for the serviceId, use the override values instead**
 - `disabled` → deny all, reason: `"Service is disabled"`
 - `read-only` → allow reads, deny writes with reason: `"Service is read-only"`
 - `read-write` → allow all
@@ -90,6 +91,37 @@ export interface PermissionChecker {
 - Needs a service-to-config-manager mapping (registry pattern)
 - Pure function logic, easily testable with no file system dependencies
 - Export both the class and a factory: `createPermissionChecker(configRegistry)`
+
+**Test mode support**:
+```typescript
+export interface TestOverride {
+  enabled?: boolean;
+  permissionLevel?: PermissionLevel;
+}
+
+export class PermissionCheckerImpl implements PermissionChecker {
+  private testOverrides: Map<string, TestOverride> | null = null;
+
+  // Only works when NODE_ENV === 'test'
+  setTestOverrides(overrides: Record<string, TestOverride>): void;
+  clearTestOverrides(): void;
+
+  check(serviceId: string, operation: OperationType): PermissionCheckResult {
+    // 1. If test override exists for serviceId, use override values
+    // 2. Otherwise, read from config manager
+    // 3. Apply permission logic
+  }
+}
+```
+
+**Test helper** (`src/security/test-helpers.ts`):
+```typescript
+// Convenience for existing tests — enables all services in read-only mode
+export function enableAllServicesForTest(checker: PermissionCheckerImpl): void;
+
+// Enable a specific service for test
+export function enableServiceForTest(checker: PermissionCheckerImpl, serviceId: string, level?: PermissionLevel): void;
+```
 
 **Types file**: `src/security/types.ts` for shared types.
 
@@ -395,9 +427,10 @@ Server start
 
 | File | Purpose | Est. Lines |
 |------|---------|------------|
-| `src/security/permission-checker.ts` | Permission enforcement logic | ~80 |
-| `src/security/types.ts` | Shared security types | ~30 |
-| `src/security/__tests__/permission-checker.test.ts` | Unit tests | ~250 |
+| `src/security/permission-checker.ts` | Permission enforcement logic + test mode | ~120 |
+| `src/security/types.ts` | Shared security types | ~40 |
+| `src/security/test-helpers.ts` | Test utilities for permission overrides | ~40 |
+| `src/security/__tests__/permission-checker.test.ts` | Unit tests (incl. test mode) | ~300 |
 | `src/config/config-store.ts` | JSON config persistence | ~150 |
 | `src/config/__tests__/config-store.test.ts` | Unit tests | ~300 |
 | `src/audit/audit-logger.ts` | JSONL audit logging with rotation | ~180 |
@@ -454,11 +487,17 @@ Server start
 
 ### Unit Tests (~1,350 lines estimated)
 
-**PermissionChecker** (~250 lines):
+**PermissionChecker** (~300 lines):
 - All permission level × operation type combinations (6 cases)
 - Unknown service ID → denied
 - Config manager returns each permission level correctly
 - Edge cases: null/undefined service, empty string
+- **Test mode**: override forces enabled/disabled regardless of config manager
+- **Test mode**: override forces specific permission level
+- **Test mode**: clearTestOverrides() restores normal behavior
+- **Test mode**: throws error when NODE_ENV !== 'test'
+- **Test helper**: enableAllServicesForTest() enables all known services
+- **Test helper**: enableServiceForTest() enables specific service with optional level
 
 **ConfigStore** (~300 lines):
 - Save and load round-trip
@@ -501,8 +540,10 @@ Server start
 
 ### Existing Test Updates
 
-- Tests that assume services are enabled by default may need to explicitly enable services
-- Add `beforeEach` setup to enable services in existing resolver tests
+- Tests that assume services are enabled by default will use `enableAllServicesForTest()` or `enableServiceForTest()` from `src/security/test-helpers.ts`
+- Test helpers use the PermissionChecker test override mechanism — no config manager changes needed
+- Add shared `beforeEach` setup in existing resolver test files to enable services via test overrides
+- This approach avoids modifying 383+ tests individually — a single import + setup line per test file
 
 ---
 
@@ -524,7 +565,7 @@ Apollo Server 3 plugin API is already available via `apollo-server-express@^3.13
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Existing tests break due to default change (enabled→disabled) | High | Medium | Update test setup to explicitly enable services; do this change last |
+| Existing tests break due to default change (enabled→disabled) | High | Medium | Test override mechanism + `enableAllServicesForTest()` helper minimizes changes; do default change last |
 | Apollo Server 3 plugin API limitations | Low | Medium | Plugin API is well-documented; fallback: use Express middleware |
 | Config file race condition on concurrent mutations | Low | Low | Atomic writes prevent corruption; last-write-wins is acceptable for single-user |
 | Audit log file grows unbounded | Low | Low | Rotation with size limit and max file count |
@@ -536,17 +577,18 @@ Apollo Server 3 plugin API is already available via `apollo-server-express@^3.13
 
 ### Implementation Order
 
-1. **Security types + PermissionChecker** — foundational, no side effects
-2. **ConfigStore** — persistence layer, no side effects until wired in
-3. **AuditLogger** — logging layer, no side effects until wired in
-4. **Permission Middleware** — Apollo plugin, adds enforcement
-5. **Config Resolver** — GraphQL API for config changes
-6. **Schema + resolver composition** — wire everything into GraphQL
-7. **Defense-in-depth checks** — add per-resolver permission checks
-8. **Server integration** — wire ConfigStore, AuditLogger, PermissionChecker into startup
-9. **Default changes** — change config manager defaults to disabled (breaking change for tests)
-10. **Test updates** — fix existing tests that assume enabled-by-default
-11. **Integration tests** — end-to-end validation
+1. **Security types + PermissionChecker** — foundational, no side effects; includes test override mechanism
+2. **Test helpers** (`src/security/test-helpers.ts`) — `enableAllServicesForTest()`, `enableServiceForTest()`
+3. **ConfigStore** — persistence layer, no side effects until wired in
+4. **AuditLogger** — logging layer, no side effects until wired in
+5. **Permission Middleware** — Apollo plugin, adds enforcement
+6. **Config Resolver** — GraphQL API for config changes
+7. **Schema + resolver composition** — wire everything into GraphQL
+8. **Defense-in-depth checks** — add per-resolver permission checks
+9. **Server integration** — wire ConfigStore, AuditLogger, PermissionChecker into startup
+10. **Default changes** — change config manager defaults to disabled (breaking change for tests)
+11. **Test updates** — add `enableAllServicesForTest()` to existing test files that assume enabled-by-default
+12. **Integration tests** — end-to-end validation
 
 ### Backward Compatibility
 
@@ -576,15 +618,12 @@ Apollo Server 3 plugin API is already available via `apollo-server-express@^3.13
 
 2. **Config file location**: Default to `./config/sysmcp-config.json` (project-relative) or `%APPDATA%\SysMCP\config.json` (user-specific)?
 
-3. **Existing test impact**: There are 383+ existing tests. How many assume services are enabled by default? A survey is needed before changing defaults.
-
 ---
 
 ## Next Steps
 
 1. Run **feature-tasks** skill to break this plan into ordered implementation tasks
-2. Survey existing tests for enabled-by-default assumptions
-3. Begin implementation with PermissionChecker (no side effects, easy to test)
+2. Begin implementation with PermissionChecker + test helpers (no side effects, easy to test)
 
 ---
 
