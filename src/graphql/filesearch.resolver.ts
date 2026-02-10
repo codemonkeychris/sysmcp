@@ -11,6 +11,7 @@ import { Logger } from '../logger/types';
 import { FileSearchProvider, PermissionDeniedException, ValidationException, ScopeViolationException, OperationFailedException } from '../services/filesearch/provider';
 import { PathAnonymizer } from '../services/filesearch/path-anonymizer';
 import { FileSearchQueryParams, SearchMode } from '../services/filesearch/types';
+import { PermissionChecker } from '../security/permission-checker';
 
 /**
  * Custom GraphQL error codes for FileSearch operations
@@ -76,6 +77,7 @@ interface ResolverContext {
   logger: Logger;
   fileSearchProvider?: FileSearchProvider;
   fileSearchAnonymizer?: PathAnonymizer;
+  permissionChecker?: PermissionChecker;
 }
 
 /**
@@ -116,6 +118,17 @@ export async function fileSearchResolver(
   const logger = context.logger.child('filesearch-resolver');
 
   try {
+    // SECURITY: Defense-in-depth permission check (second layer after middleware)
+    if (context.permissionChecker) {
+      const permCheck = context.permissionChecker.check('filesearch', 'read');
+      if (!permCheck.allowed) {
+        throw new FileSearchGraphQLError(
+          'Permission denied',
+          FileSearchErrorCode.PermissionDenied
+        );
+      }
+    }
+
     // Check service availability
     if (!context.fileSearchProvider) {
       throw new FileSearchGraphQLError(
