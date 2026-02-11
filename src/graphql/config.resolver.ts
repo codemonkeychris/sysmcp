@@ -98,11 +98,41 @@ function buildServiceConfig(
 }
 
 /**
- * Persist current config state to ConfigStore
+ * SECURITY: Write lock to prevent concurrent config writes (SEC-007).
+ * Serializes all persistConfig calls to prevent last-write-wins races.
+ */
+let configWriteLock: Promise<void> = Promise.resolve();
+
+/**
+ * Reset the write lock (for testing only)
+ */
+export function resetConfigWriteLock(): void {
+  configWriteLock = Promise.resolve();
+}
+
+/**
+ * Persist current config state to ConfigStore, serialized by write lock
  */
 async function persistConfig(context: ConfigResolverContext): Promise<void> {
   if (!context.configStore) return;
 
+  // Acquire lock by chaining onto the previous write
+  const previousLock = configWriteLock;
+  let resolve: () => void;
+  configWriteLock = new Promise<void>((r) => { resolve = r; });
+
+  try {
+    await previousLock;
+    await persistConfigInner(context);
+  } finally {
+    resolve!();
+  }
+}
+
+/**
+ * Inner persist logic (called under write lock)
+ */
+async function persistConfigInner(context: ConfigResolverContext): Promise<void> {
   const config: PersistedConfig = createDefaultConfig();
 
   // Save eventlog config if available
@@ -129,7 +159,7 @@ async function persistConfig(context: ConfigResolverContext): Promise<void> {
     };
   }
 
-  await context.configStore.save(config);
+  await context.configStore!.save(config);
 }
 
 /**

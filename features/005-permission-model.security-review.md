@@ -68,9 +68,9 @@
 - **File**: `src/config/config-store.ts:108`, `src/graphql/config.resolver.ts`
 - **Issue**: Multiple concurrent GraphQL mutations trigger `persistConfig()` -> `configStore.save()` without any locking. Two simultaneous mutations can both read the current state, both write changes, and the second rename overwrites the first (last-write-wins). The temp file name uses millisecond precision, so two writes in the same ms from the same process collide.
 - **Fix**: Add a write lock (mutex/semaphore) around `persistConfig` calls, or use an async queue to serialize config writes.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-008: GraphQL introspection always enabled
 - **File**: `src/server.ts:215`

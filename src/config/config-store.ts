@@ -44,6 +44,11 @@ export interface ConfigStore {
 const CURRENT_SCHEMA_VERSION = 1;
 
 /**
+ * Monotonic counter to ensure unique temp file names even within the same ms
+ */
+let tempFileCounter = 0;
+
+/**
  * Valid permission levels for schema validation
  */
 const VALID_PERMISSION_LEVELS: readonly string[] = ['read-only', 'read-write', 'disabled'];
@@ -208,8 +213,8 @@ export class ConfigStoreImpl implements ConfigStore {
     // Serialize with human-readable formatting
     const content = JSON.stringify(config, null, 2);
 
-    // Atomic write: temp file + rename
-    const tmpPath = `${this.storagePath}.${process.pid}.${Date.now()}.tmp`;
+    // Atomic write: temp file + rename (counter prevents same-ms collisions)
+    const tmpPath = `${this.storagePath}.${process.pid}.${Date.now()}.${++tempFileCounter}.tmp`;
 
     try {
       await fs.promises.writeFile(tmpPath, content, 'utf-8');

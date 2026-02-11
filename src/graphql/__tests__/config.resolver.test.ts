@@ -2,7 +2,7 @@
  * Config Resolver Unit Tests
  */
 
-import { configResolver } from '../config.resolver';
+import { configResolver, resetConfigWriteLock } from '../config.resolver';
 import { EventLogConfigManager } from '../../services/eventlog/config';
 import { FileSearchConfigManager } from '../../services/filesearch/config';
 import { GQLPermissionLevel } from '../types';
@@ -296,6 +296,84 @@ describe('Config Resolver', () => {
       await expect(
         configResolver.Mutation.resetServiceConfig(null, { serviceId: 'bogus' }, context)
       ).rejects.toThrow('Unknown service');
+    });
+  });
+
+  describe('SEC-007: Concurrent config writes serialized', () => {
+    beforeEach(() => {
+      resetConfigWriteLock();
+    });
+
+    it('should serialize concurrent saves (no data corruption)', async () => {
+      const context = createContext();
+      const saveSpy = context.configStore.save;
+      let saveCount = 0;
+      let maxConcurrent = 0;
+      let concurrent = 0;
+
+      saveSpy.mockImplementation(async () => {
+        concurrent++;
+        maxConcurrent = Math.max(maxConcurrent, concurrent);
+        // Simulate slow write
+        await new Promise((r) => setTimeout(r, 10));
+        saveCount++;
+        concurrent--;
+      });
+
+      // Launch 5 concurrent mutations
+      const promises = Array.from({ length: 5 }, () =>
+        configResolver.Mutation.enableService(null, { serviceId: 'eventlog' }, context)
+      );
+
+      await Promise.all(promises);
+
+      expect(saveCount).toBe(5);
+      // With proper locking, max concurrent should be 1
+      expect(maxConcurrent).toBe(1);
+    });
+
+    it('should not lose writes when mutations are concurrent', async () => {
+      const context = createContext();
+      const saveCallOrder: number[] = [];
+      let callIndex = 0;
+
+      context.configStore.save.mockImplementation(async () => {
+        saveCallOrder.push(++callIndex);
+        await new Promise((r) => setTimeout(r, 5));
+      });
+
+      await Promise.all([
+        configResolver.Mutation.enableService(null, { serviceId: 'eventlog' }, context),
+        configResolver.Mutation.disableService(null, { serviceId: 'filesearch' }, context),
+        configResolver.Mutation.setPermissionLevel(null, { serviceId: 'eventlog', level: 'READ_WRITE' }, context),
+      ]);
+
+      // All 3 saves should have been called
+      expect(saveCallOrder).toEqual([1, 2, 3]);
+    });
+
+    it('should allow writes even after a previous write fails', async () => {
+      const context = createContext();
+      let callCount = 0;
+
+      context.configStore.save.mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          throw new Error('Disk full');
+        }
+      });
+
+      // First call should fail
+      await expect(
+        configResolver.Mutation.enableService(null, { serviceId: 'eventlog' }, context)
+      ).rejects.toThrow('Disk full');
+
+      // Second call should succeed (lock released after error)
+      await expect(
+        configResolver.Mutation.enableService(null, { serviceId: 'eventlog' }, context)
+      ).resolves.toBeDefined();
+
+      expect(callCount).toBe(2);
     });
   });
 });
