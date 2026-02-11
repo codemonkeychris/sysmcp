@@ -5,6 +5,7 @@
 
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { ApolloServer } from 'apollo-server-express';
+import rateLimit from 'express-rate-limit';
 import { Logger } from './logger';
 import { ServiceRegistry } from './services/types';
 import { Config } from './config';
@@ -87,6 +88,16 @@ class ServerImpl implements Server {
   private setupMiddleware(): void {
     // Parse JSON request bodies
     this.app.use(express.json());
+
+    // SECURITY: Rate limiting for GraphQL endpoint (SEC-009)
+    const graphqlLimiter = rateLimit({
+      windowMs: 60 * 1000, // 1 minute
+      max: 100, // 100 requests per minute
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: 'Too many requests, please try again later' },
+    });
+    this.app.use('/graphql', graphqlLimiter);
 
     // Request logging middleware
     this.app.use((req: Request, res: Response, next: NextFunction) => {

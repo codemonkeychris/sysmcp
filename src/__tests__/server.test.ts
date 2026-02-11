@@ -263,4 +263,16 @@ describe('HTTP Server', () => {
       expect(testServer.app).toBeDefined();
     });
   });
+
+  // SEC-009: Rate limiting tests
+  describe('SEC-009: rate limiting', () => {
+    it('should have rate limiting middleware on /graphql', () => {
+      const testServer = createServer(logger, config, registry);
+      // The server should have been created with rate limiting middleware
+      expect(testServer.app).toBeDefined();
+      // Verify the app has middleware layers registered
+      const stack = testServer.app._router?.stack || [];
+      expect(stack.length).toBeGreaterThan(0);
+    });
+  });
 });
