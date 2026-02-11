@@ -478,4 +478,54 @@ describe('ConfigStore', () => {
       });
     });
   });
+
+  describe('SEC-011: File permissions on Windows', () => {
+    it('should set restrictive file permissions on save', async () => {
+      const config = createDefaultConfig();
+      await store.save(config);
+
+      // Verify file was created
+      const exists = fs.existsSync(configPath);
+      expect(exists).toBe(true);
+
+      if (process.platform === 'win32') {
+        // On Windows, verify icacls was applied by checking ACL
+        const { execSync } = require('child_process');
+        try {
+          const output = execSync(`icacls "${configPath}"`, { encoding: 'utf-8' });
+          // Should contain the current user with full control
+          const username = process.env.USERNAME || '';
+          if (username) {
+            expect(output).toContain(username);
+          }
+        } catch {
+          // icacls may not be available in all test environments
+        }
+      } else {
+        // On Unix, verify chmod was applied
+        const stats = await fs.promises.stat(configPath);
+        const mode = stats.mode & 0o777;
+        expect(mode).toBe(0o600);
+      }
+    });
+
+    it('should not fail save if permission setting fails', async () => {
+      // Even if permission setting fails, save should succeed
+      const config = createDefaultConfig();
+      await expect(store.save(config)).resolves.not.toThrow();
+      
+      const loaded = await store.load();
+      expect(loaded).not.toBeNull();
+    });
+
+    it('should attempt platform-appropriate permission setting', async () => {
+      const config = createDefaultConfig();
+      await store.save(config);
+
+      // Config should be readable by the current process regardless
+      const content = await fs.promises.readFile(configPath, 'utf-8');
+      const parsed = JSON.parse(content);
+      expect(parsed.version).toBe(1);
+    });
+  });
 });

@@ -219,11 +219,23 @@ export class ConfigStoreImpl implements ConfigStore {
     try {
       await fs.promises.writeFile(tmpPath, content, 'utf-8');
 
-      // Set file permissions (Unix only, noop on Windows)
+      // SECURITY: Set restrictive file permissions (SEC-011)
       try {
-        await fs.promises.chmod(tmpPath, 0o600);
+        if (process.platform === 'win32') {
+          // Windows: Use icacls to restrict to current user only
+          const { execSync } = require('child_process');
+          const username = process.env.USERNAME || process.env.USER || '';
+          if (username) {
+            execSync(`icacls "${tmpPath}" /inheritance:r /grant:r "${username}:(F)" /C`, {
+              stdio: 'ignore',
+              timeout: 5000,
+            });
+          }
+        } else {
+          await fs.promises.chmod(tmpPath, 0o600);
+        }
       } catch {
-        // chmod may fail on Windows, that's expected
+        // File permission setting may fail in some environments
       }
 
       // Atomic rename
