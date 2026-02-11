@@ -102,7 +102,9 @@ export function createConfig(): Config {
     );
   }
 
-  const graphqlIntrospection = env.GRAPHQL_INTROSPECTION !== 'false';
+  // SECURITY: Default introspection to false in production (SEC-008)
+  const graphqlIntrospection = env.GRAPHQL_INTROSPECTION === 'true' ||
+    (env.GRAPHQL_INTROSPECTION !== 'false' && nodeEnv !== 'production');
   const maxQueryDepth = env.MAX_QUERY_DEPTH ? parseInt(env.MAX_QUERY_DEPTH, 10) : 10;
   const requestTimeoutMs = env.REQUEST_TIMEOUT_MS
     ? parseInt(env.REQUEST_TIMEOUT_MS, 10)

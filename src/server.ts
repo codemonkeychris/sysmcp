@@ -212,7 +212,8 @@ class ServerImpl implements Server {
     this.apolloServer = new ApolloServer({
       typeDefs,
       resolvers: createResolvers(this.registry, this.logger),
-      introspection: true,
+      // SECURITY: Only enable introspection in development or when explicitly configured (SEC-008)
+      introspection: this.config.graphqlIntrospection ?? this.config.nodeEnv === 'development',
       plugins: [createPermissionPlugin(this.permissionChecker)],
       context: async ({ req }: { req: any }) => ({
         req,

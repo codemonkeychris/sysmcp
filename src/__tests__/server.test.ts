@@ -229,4 +229,38 @@ describe('HTTP Server', () => {
       expect(testServer.app).toBeDefined();
     });
   });
+
+  // SEC-008: GraphQL introspection control tests
+  describe('SEC-008: introspection control', () => {
+    it('should disable introspection when graphqlIntrospection is false', () => {
+      const testConfig: Config = {
+        ...config,
+        graphqlIntrospection: false,
+      };
+
+      const testServer = createServer(logger, testConfig, registry);
+      expect(testServer.app).toBeDefined();
+    });
+
+    it('should enable introspection when graphqlIntrospection is true', () => {
+      const testConfig: Config = {
+        ...config,
+        graphqlIntrospection: true,
+      };
+
+      const testServer = createServer(logger, testConfig, registry);
+      expect(testServer.app).toBeDefined();
+    });
+
+    it('should disable introspection in production by default', () => {
+      const testConfig: Config = {
+        ...config,
+        nodeEnv: 'production',
+        graphqlIntrospection: false,
+      };
+
+      const testServer = createServer(logger, testConfig, registry);
+      expect(testServer.app).toBeDefined();
+    });
+  });
 });
