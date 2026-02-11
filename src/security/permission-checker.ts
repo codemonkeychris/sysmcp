@@ -29,9 +29,12 @@ export interface PermissionChecker {
 export class PermissionCheckerImpl implements PermissionChecker {
   private configProviders: Map<string, ServiceConfigProvider>;
   private testOverrides: Map<string, TestOverride> | null = null;
+  // SECURITY: Captured at construction time, not runtime (SEC-015)
+  private readonly allowTestOverrides: boolean;
 
-  constructor(configProviders: Map<string, ServiceConfigProvider>) {
+  constructor(configProviders: Map<string, ServiceConfigProvider>, allowTestOverrides?: boolean) {
     this.configProviders = configProviders;
+    this.allowTestOverrides = allowTestOverrides ?? process.env.NODE_ENV === 'test';
   }
 
   /**
@@ -105,12 +108,12 @@ export class PermissionCheckerImpl implements PermissionChecker {
 
   /**
    * Set test overrides for permission checking
-   * Only works when NODE_ENV === 'test'
+   * SECURITY: Only works when constructed with allowTestOverrides=true (SEC-015)
    *
-   * @throws Error if NODE_ENV is not 'test'
+   * @throws Error if test overrides are not allowed
    */
   setTestOverrides(overrides: Record<string, TestOverride>): void {
-    if (process.env.NODE_ENV !== 'test') {
+    if (!this.allowTestOverrides) {
       throw new Error('Test overrides can only be set when NODE_ENV is "test"');
     }
     this.testOverrides = new Map(Object.entries(overrides));
@@ -118,8 +121,12 @@ export class PermissionCheckerImpl implements PermissionChecker {
 
   /**
    * Clear all test overrides, restoring config-manager-based behavior
+   * SECURITY: Same guard as setTestOverrides for consistency (SEC-016)
    */
   clearTestOverrides(): void {
+    if (!this.allowTestOverrides) {
+      throw new Error('Test overrides can only be cleared when NODE_ENV is "test"');
+    }
     this.testOverrides = null;
   }
 

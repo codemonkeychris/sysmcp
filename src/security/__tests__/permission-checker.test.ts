@@ -238,25 +238,21 @@ describe('PermissionChecker', () => {
     });
 
     it('should throw when setting overrides outside test environment', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      // SEC-015: Use constructor flag instead of runtime NODE_ENV
+      const prodChecker = new PermissionCheckerImpl(providers, false);
 
       expect(() => {
-        checker.setTestOverrides({ eventlog: { enabled: true } });
+        prodChecker.setTestOverrides({ eventlog: { enabled: true } });
       }).toThrow('Test overrides can only be set when NODE_ENV is "test"');
-
-      process.env.NODE_ENV = originalEnv;
     });
 
     it('should throw when setting overrides in development environment', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      // SEC-015: Use constructor flag instead of runtime NODE_ENV
+      const devChecker = new PermissionCheckerImpl(providers, false);
 
       expect(() => {
-        checker.setTestOverrides({ eventlog: { enabled: true } });
+        devChecker.setTestOverrides({ eventlog: { enabled: true } });
       }).toThrow('Test overrides can only be set when NODE_ENV is "test"');
-
-      process.env.NODE_ENV = originalEnv;
     });
   });
 
@@ -337,6 +333,54 @@ describe('PermissionChecker', () => {
       expect(result.allowed).toBe(false);
       expect(result.reason).not.toContain('"');
       expect(result.reason).not.toContain('=');
+    });
+  });
+
+  describe('SEC-015: Constructor-injected test override flag', () => {
+    it('should use allowTestOverrides from constructor', () => {
+      const prodChecker = new PermissionCheckerImpl(providers, false);
+      expect(() => {
+        prodChecker.setTestOverrides({ eventlog: { enabled: true } });
+      }).toThrow();
+    });
+
+    it('should allow overrides when explicitly enabled via constructor', () => {
+      const testChecker = new PermissionCheckerImpl(providers, true);
+      expect(() => {
+        testChecker.setTestOverrides({ eventlog: { enabled: true } });
+      }).not.toThrow();
+    });
+
+    it('should not be bypassed by changing NODE_ENV at runtime', () => {
+      // Construct with overrides disabled
+      const checker = new PermissionCheckerImpl(providers, false);
+
+      // Even if NODE_ENV changes to 'test' at runtime, overrides remain blocked
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'test';
+
+      expect(() => {
+        checker.setTestOverrides({ eventlog: { enabled: true } });
+      }).toThrow();
+
+      process.env.NODE_ENV = originalEnv;
+    });
+  });
+
+  describe('SEC-016: Consistent guards on clearTestOverrides', () => {
+    it('should throw on clearTestOverrides when overrides not allowed', () => {
+      const prodChecker = new PermissionCheckerImpl(providers, false);
+      expect(() => {
+        prodChecker.clearTestOverrides();
+      }).toThrow('Test overrides can only be cleared when NODE_ENV is "test"');
+    });
+
+    it('should allow clearTestOverrides when overrides allowed', () => {
+      const testChecker = new PermissionCheckerImpl(providers, true);
+      testChecker.setTestOverrides({ eventlog: { enabled: true } });
+      expect(() => {
+        testChecker.clearTestOverrides();
+      }).not.toThrow();
     });
   });
 });

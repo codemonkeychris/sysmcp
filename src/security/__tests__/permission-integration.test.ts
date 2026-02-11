@@ -151,16 +151,17 @@ describe('Permission Model Integration', () => {
     });
 
     it('should not allow test overrides outside test environment', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      // SEC-015: Use constructor flag instead of runtime NODE_ENV
+      const testProviders = new Map<string, ServiceConfigProvider>();
+      testProviders.set('eventlog', eventlogConfig);
+      testProviders.set('filesearch', filesearchConfig);
+      const prodChecker = new PermissionCheckerImpl(testProviders, false);
 
       expect(() =>
-        permissionChecker.setTestOverrides({
+        prodChecker.setTestOverrides({
           eventlog: { enabled: true },
         })
       ).toThrow('Test overrides can only be set');
-
-      process.env.NODE_ENV = originalEnv;
     });
   });
 
