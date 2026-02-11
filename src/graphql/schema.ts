@@ -298,8 +298,8 @@ export const typeDefs = `#graphql
     stopService(name: String!): ServiceOperationResult!
     restartService(name: String!): ServiceOperationResult!
 
-    """Enable a service (sets enabled=true, permissionLevel=READ_ONLY)"""
-    enableService(serviceId: String!): ServiceConfig!
+    """Enable a service with optional permission level (defaults to READ_ONLY)"""
+    enableService(serviceId: String!, level: PermissionLevel): ServiceConfig!
 
     """Disable a service (sets enabled=false, permissionLevel=DISABLED)"""
     disableService(serviceId: String!): ServiceConfig!

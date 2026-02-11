@@ -221,7 +221,7 @@ export const configResolver = {
   Mutation: {
     enableService: async (
       _parent: any,
-      args: { serviceId: string },
+      args: { serviceId: string; level?: string },
       context: ConfigResolverContext
     ): Promise<GQLServiceConfig> => {
       validateServiceId(args.serviceId);
@@ -235,8 +235,10 @@ export const configResolver = {
       const previousEnabled = manager.isEnabled();
       const previousLevel = manager.getPermissionLevel();
 
+      // SECURITY: Atomically enable + set level to avoid intermediate state (SEC-013)
+      const targetLevel = args.level ? fromGQLPermissionLevel(args.level) : 'read-only';
       manager.setEnabled(true);
-      manager.setPermissionLevel('read-only');
+      manager.setPermissionLevel(targetLevel);
 
       await persistConfig(context);
 
@@ -245,7 +247,7 @@ export const configResolver = {
           action: 'service.enable',
           serviceId: args.serviceId,
           previousValue: { enabled: previousEnabled, permissionLevel: previousLevel },
-          newValue: { enabled: true, permissionLevel: 'read-only' },
+          newValue: { enabled: true, permissionLevel: targetLevel },
           source: 'graphql-mutation',
         });
       }

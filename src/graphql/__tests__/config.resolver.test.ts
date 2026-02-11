@@ -432,4 +432,56 @@ describe('Config Resolver', () => {
       }
     });
   });
+
+  describe('SEC-013: Atomic enable + permission level change', () => {
+    it('should enable with default read-only when no level specified', async () => {
+      const context = createContext();
+      const result = await configResolver.Mutation.enableService(
+        null, { serviceId: 'eventlog' }, context
+      );
+      expect(result.enabled).toBe(true);
+      expect(result.permissionLevel).toBe('READ_ONLY');
+    });
+
+    it('should enable with specified READ_WRITE level atomically', async () => {
+      const context = createContext();
+      const result = await configResolver.Mutation.enableService(
+        null, { serviceId: 'eventlog', level: 'READ_WRITE' }, context
+      );
+      expect(result.enabled).toBe(true);
+      expect(result.permissionLevel).toBe('READ_WRITE');
+    });
+
+    it('should enable with specified READ_ONLY level', async () => {
+      const context = createContext();
+      const result = await configResolver.Mutation.enableService(
+        null, { serviceId: 'eventlog', level: 'READ_ONLY' }, context
+      );
+      expect(result.enabled).toBe(true);
+      expect(result.permissionLevel).toBe('READ_ONLY');
+    });
+
+    it('should reject invalid permission level in enableService', async () => {
+      const context = createContext();
+      await expect(
+        configResolver.Mutation.enableService(
+          null, { serviceId: 'eventlog', level: 'INVALID' }, context
+        )
+      ).rejects.toThrow('Invalid permission level');
+    });
+
+    it('should audit log the actual level set', async () => {
+      const context = createContext();
+      await configResolver.Mutation.enableService(
+        null, { serviceId: 'eventlog', level: 'READ_WRITE' }, context
+      );
+
+      expect(context.auditLogger!.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'service.enable',
+          newValue: expect.objectContaining({ permissionLevel: 'read-write' }),
+        })
+      );
+    });
+  });
 });
