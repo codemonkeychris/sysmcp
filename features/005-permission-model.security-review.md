@@ -23,9 +23,9 @@
 - **Issue**: All configuration mutations (`enableService`, `disableService`, `setPermissionLevel`, `setPiiAnonymization`, `resetServiceConfig`) plus service lifecycle mutations (`registerService`, `startService`, `stopService`, `restartService`) are in the `BYPASS_FIELDS` set and require zero authentication. Any client that can reach the GraphQL endpoint can reconfigure the entire permission model.
 - **Attack**: `mutation { setPermissionLevel(serviceId: "eventlog", level: READ_WRITE) { permissionLevel } }` followed by `mutation { setPiiAnonymization(serviceId: "eventlog", enabled: false) { enableAnonymization } }` — full compromise.
 - **Fix**: Add authentication to admin mutations (API key, token, or localhost-only enforcement). At minimum, gate admin mutations behind a separate auth check.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-003: Middleware fails open on parse error
 - **File**: `src/graphql/permission-middleware.ts:50-66`

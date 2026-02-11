@@ -6,6 +6,7 @@
  *
  * SECURITY: This is the first layer of permission enforcement.
  * Per-resolver checks provide defense-in-depth as a second layer.
+ * Admin mutations require localhost origin.
  */
 
 import { ApolloServerPlugin } from 'apollo-server-plugin-base';
@@ -23,7 +24,7 @@ const FIELD_TO_SERVICE: Record<string, { serviceId: string; operation: Operation
 };
 
 /**
- * Fields that bypass permission checks (admin and meta queries/mutations)
+ * Fields that bypass all permission checks (read-only meta queries)
  */
 const BYPASS_FIELDS = new Set([
   'services',
@@ -31,6 +32,16 @@ const BYPASS_FIELDS = new Set([
   'health',
   'serviceConfig',
   'allServiceConfigs',
+  '__schema',
+  '__type',
+]);
+
+/**
+ * SECURITY: Admin mutations that require localhost origin.
+ * These bypass service-level permission checks but require the request
+ * to originate from localhost (127.0.0.1, ::1, or ::ffff:127.0.0.1).
+ */
+const ADMIN_FIELDS = new Set([
   'registerService',
   'startService',
   'stopService',
@@ -40,9 +51,21 @@ const BYPASS_FIELDS = new Set([
   'setPermissionLevel',
   'setPiiAnonymization',
   'resetServiceConfig',
-  '__schema',
-  '__type',
 ]);
+
+/**
+ * SECURITY: Check if a remote address is localhost.
+ * Accepts IPv4 127.0.0.1, IPv6 ::1, and IPv4-mapped IPv6 ::ffff:127.0.0.1.
+ */
+export function isLocalhostAddress(remoteAddress: string | undefined): boolean {
+  if (!remoteAddress) return false;
+  const normalized = remoteAddress.trim();
+  return (
+    normalized === '127.0.0.1' ||
+    normalized === '::1' ||
+    normalized === '::ffff:127.0.0.1'
+  );
+}
 
 /**
  * Extract top-level field names from a GraphQL operation.
@@ -76,17 +99,31 @@ export function createPermissionPlugin(
   permissionChecker: PermissionChecker
 ): ApolloServerPlugin {
   return {
-    async requestDidStart() {
+    async requestDidStart(requestContext: any) {
+      // Extract remote address from the HTTP request
+      const req = requestContext?.context?.req || requestContext?.req;
+      const remoteAddress = req?.connection?.remoteAddress || req?.socket?.remoteAddress || req?.ip;
+
       return {
-        async responseForOperation(requestContext: any) {
-          const { document } = requestContext;
+        async responseForOperation(opContext: any) {
+          const { document } = opContext;
           if (!document) return null;
 
           const fields = getTopLevelFields(document);
 
           for (const field of fields) {
-            // Skip fields that bypass permission checks
+            // Skip read-only meta queries
             if (BYPASS_FIELDS.has(field)) {
+              continue;
+            }
+
+            // SECURITY: Admin mutations require localhost origin
+            if (ADMIN_FIELDS.has(field)) {
+              if (!isLocalhostAddress(remoteAddress)) {
+                throw new GraphQLError('Permission denied', {
+                  extensions: { code: 'PERMISSION_DENIED' },
+                });
+              }
               continue;
             }
 

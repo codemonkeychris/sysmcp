@@ -214,7 +214,8 @@ class ServerImpl implements Server {
       resolvers: createResolvers(this.registry, this.logger),
       introspection: true,
       plugins: [createPermissionPlugin(this.permissionChecker)],
-      context: async () => ({
+      context: async ({ req }: { req: any }) => ({
+        req,
         registry: this.registry,
         logger: this.logger,
         startTime: this.startTime,
