@@ -44,6 +44,83 @@ export interface ConfigStore {
 const CURRENT_SCHEMA_VERSION = 1;
 
 /**
+ * Valid permission levels for schema validation
+ */
+const VALID_PERMISSION_LEVELS: readonly string[] = ['read-only', 'read-write', 'disabled'];
+
+/**
+ * SECURITY: Validate a loaded config object against the expected schema.
+ * Rejects unknown permission levels, invalid types, and unexpected data.
+ * Returns a sanitized copy with only recognized fields.
+ */
+export function validateConfig(parsed: any): PersistedConfig {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Invalid config structure: expected an object');
+  }
+
+  if (!parsed.services || typeof parsed.services !== 'object' || Array.isArray(parsed.services)) {
+    throw new Error('Invalid config structure: missing or invalid services');
+  }
+
+  if (parsed.version !== undefined && typeof parsed.version !== 'number') {
+    throw new Error('Invalid config structure: version must be a number');
+  }
+
+  const sanitized: PersistedConfig = {
+    version: typeof parsed.version === 'number' ? parsed.version : CURRENT_SCHEMA_VERSION,
+    lastModified: typeof parsed.lastModified === 'string' ? parsed.lastModified : new Date().toISOString(),
+    services: {},
+  };
+
+  for (const [serviceId, serviceConfig] of Object.entries(parsed.services)) {
+    const sc = serviceConfig as any;
+    if (!sc || typeof sc !== 'object' || Array.isArray(sc)) {
+      throw new Error(`Invalid config for service '${serviceId}': expected an object`);
+    }
+
+    if (typeof sc.enabled !== 'boolean') {
+      throw new Error(`Invalid config for service '${serviceId}': enabled must be a boolean`);
+    }
+
+    if (!VALID_PERMISSION_LEVELS.includes(sc.permissionLevel)) {
+      throw new Error(
+        `Invalid config for service '${serviceId}': invalid permissionLevel '${String(sc.permissionLevel).substring(0, 50)}'`
+      );
+    }
+
+    if (typeof sc.enableAnonymization !== 'boolean') {
+      throw new Error(`Invalid config for service '${serviceId}': enableAnonymization must be a boolean`);
+    }
+
+    // Build sanitized service config with only known fields
+    const sanitizedService: PersistedServiceConfig = {
+      enabled: sc.enabled,
+      permissionLevel: sc.permissionLevel as PermissionLevel,
+      enableAnonymization: sc.enableAnonymization,
+    };
+
+    // Copy optional numeric fields if valid
+    if (sc.maxResults !== undefined) {
+      if (typeof sc.maxResults !== 'number' || !Number.isInteger(sc.maxResults) || sc.maxResults < 1 || sc.maxResults > 100000) {
+        throw new Error(`Invalid config for service '${serviceId}': maxResults must be an integer between 1 and 100000`);
+      }
+      sanitizedService.maxResults = sc.maxResults;
+    }
+
+    if (sc.timeoutMs !== undefined) {
+      if (typeof sc.timeoutMs !== 'number' || !Number.isInteger(sc.timeoutMs) || sc.timeoutMs < 1000 || sc.timeoutMs > 300000) {
+        throw new Error(`Invalid config for service '${serviceId}': timeoutMs must be an integer between 1000 and 300000`);
+      }
+      sanitizedService.timeoutMs = sc.timeoutMs;
+    }
+
+    sanitized.services[serviceId] = sanitizedService;
+  }
+
+  return sanitized;
+}
+
+/**
  * ConfigStore implementation with atomic writes
  */
 export class ConfigStoreImpl implements ConfigStore {
@@ -70,12 +147,8 @@ export class ConfigStoreImpl implements ConfigStore {
       const content = await fs.promises.readFile(this.storagePath, 'utf-8');
       const parsed = JSON.parse(content);
 
-      // Basic validation
-      if (!parsed || typeof parsed !== 'object' || !parsed.services) {
-        throw new Error('Invalid config structure');
-      }
-
-      return parsed as PersistedConfig;
+      // SECURITY: Full schema validation (SEC-005)
+      return validateConfig(parsed);
     } catch (error) {
       // Corrupt file: rename to .corrupt.{timestamp} and return null
       const timestamp = Date.now();

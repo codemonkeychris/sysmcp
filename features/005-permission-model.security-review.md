@@ -52,9 +52,9 @@
 - **File**: `src/config/config-store.ts:69-89`
 - **Issue**: `load()` parses JSON and only checks that `parsed.services` exists, then casts to `PersistedConfig`. No validation of: `version` field, `permissionLevel` values (feeds into SEC-001), `enabled` being actually boolean, extra/unexpected properties, or absurd numeric values. An attacker who can modify the config file can inject arbitrary data trusted by the application.
 - **Fix**: Validate all fields on load. Check `permissionLevel` against the known enum. Validate types of `enabled`, `enableAnonymization`, numeric ranges. Reject or sanitize unknown fields.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-006: Config and audit path injection via environment variables
 - **File**: `src/config/config-store.ts:53-56`, `src/audit/audit-logger.ts:43-45`

@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { ConfigStoreImpl, createDefaultConfig, PersistedConfig } from '../config-store';
+import { ConfigStoreImpl, createDefaultConfig, PersistedConfig, validateConfig } from '../config-store';
 
 describe('ConfigStore', () => {
   let tmpDir: string;
@@ -198,6 +198,210 @@ describe('ConfigStore', () => {
       expect(config.version).toBe(1);
       expect(config.services).toEqual({});
       expect(config.lastModified).toBeDefined();
+    });
+  });
+
+  describe('SEC-005: Schema validation on config file load', () => {
+    describe('validateConfig', () => {
+      it('should accept a valid config', () => {
+        const input = {
+          version: 1,
+          lastModified: '2026-01-01T00:00:00.000Z',
+          services: {
+            eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: true },
+          },
+        };
+        const result = validateConfig(input);
+        expect(result.services.eventlog.enabled).toBe(true);
+        expect(result.services.eventlog.permissionLevel).toBe('read-only');
+      });
+
+      it('should reject null input', () => {
+        expect(() => validateConfig(null)).toThrow('Invalid config structure');
+      });
+
+      it('should reject array input', () => {
+        expect(() => validateConfig([])).toThrow('Invalid config structure');
+      });
+
+      it('should reject missing services', () => {
+        expect(() => validateConfig({ version: 1 })).toThrow('missing or invalid services');
+      });
+
+      it('should reject services as an array', () => {
+        expect(() => validateConfig({ services: [] })).toThrow('missing or invalid services');
+      });
+
+      it('should reject non-number version', () => {
+        expect(() =>
+          validateConfig({ version: 'foo', services: {} })
+        ).toThrow('version must be a number');
+      });
+
+      it('should reject invalid permissionLevel', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: true, permissionLevel: 'admin', enableAnonymization: true },
+            },
+          })
+        ).toThrow("invalid permissionLevel 'admin'");
+      });
+
+      it('should reject unknown permissionLevel values', () => {
+        const badLevels = ['rwx', 'foo', 'READWRITE', 'superuser', ''];
+        for (const level of badLevels) {
+          expect(() =>
+            validateConfig({
+              services: {
+                test: { enabled: true, permissionLevel: level, enableAnonymization: true },
+              },
+            })
+          ).toThrow('invalid permissionLevel');
+        }
+      });
+
+      it('should reject non-boolean enabled', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: 'yes', permissionLevel: 'read-only', enableAnonymization: true },
+            },
+          })
+        ).toThrow('enabled must be a boolean');
+      });
+
+      it('should reject non-boolean enableAnonymization', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: 1 },
+            },
+          })
+        ).toThrow('enableAnonymization must be a boolean');
+      });
+
+      it('should reject invalid maxResults', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: true, maxResults: -1 },
+            },
+          })
+        ).toThrow('maxResults must be an integer');
+      });
+
+      it('should reject maxResults exceeding 100000', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: true, maxResults: 999999 },
+            },
+          })
+        ).toThrow('maxResults must be an integer');
+      });
+
+      it('should reject invalid timeoutMs', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: true, timeoutMs: 500 },
+            },
+          })
+        ).toThrow('timeoutMs must be an integer');
+      });
+
+      it('should reject timeoutMs exceeding 300000', () => {
+        expect(() =>
+          validateConfig({
+            services: {
+              eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: true, timeoutMs: 999999 },
+            },
+          })
+        ).toThrow('timeoutMs must be an integer');
+      });
+
+      it('should accept valid optional numeric fields', () => {
+        const result = validateConfig({
+          services: {
+            eventlog: {
+              enabled: true,
+              permissionLevel: 'read-write',
+              enableAnonymization: false,
+              maxResults: 5000,
+              timeoutMs: 30000,
+            },
+          },
+        });
+        expect(result.services.eventlog.maxResults).toBe(5000);
+        expect(result.services.eventlog.timeoutMs).toBe(30000);
+      });
+
+      it('should strip unknown fields from service config', () => {
+        const result = validateConfig({
+          services: {
+            eventlog: {
+              enabled: true,
+              permissionLevel: 'read-only',
+              enableAnonymization: true,
+              maliciousField: 'payload',
+              __proto__: 'attack',
+            },
+          },
+        });
+        expect((result.services.eventlog as any).maliciousField).toBeUndefined();
+      });
+
+      it('should reject service config that is not an object', () => {
+        expect(() =>
+          validateConfig({ services: { eventlog: 'not an object' } })
+        ).toThrow('expected an object');
+      });
+    });
+
+    describe('load with validation', () => {
+      it('should reject config with invalid permissionLevel on load', async () => {
+        const badConfig = {
+          version: 1,
+          lastModified: new Date().toISOString(),
+          services: {
+            eventlog: { enabled: true, permissionLevel: 'admin', enableAnonymization: true },
+          },
+        };
+        await fs.promises.writeFile(configPath, JSON.stringify(badConfig), 'utf-8');
+
+        const result = await store.load();
+        expect(result).toBeNull(); // Corrupt config handled gracefully
+      });
+
+      it('should reject config with non-boolean enabled on load', async () => {
+        const badConfig = {
+          version: 1,
+          lastModified: new Date().toISOString(),
+          services: {
+            eventlog: { enabled: 'yes', permissionLevel: 'read-only', enableAnonymization: true },
+          },
+        };
+        await fs.promises.writeFile(configPath, JSON.stringify(badConfig), 'utf-8');
+
+        const result = await store.load();
+        expect(result).toBeNull();
+      });
+
+      it('should load valid config correctly', async () => {
+        const goodConfig = {
+          version: 1,
+          lastModified: new Date().toISOString(),
+          services: {
+            eventlog: { enabled: true, permissionLevel: 'read-only', enableAnonymization: true },
+          },
+        };
+        await fs.promises.writeFile(configPath, JSON.stringify(goodConfig), 'utf-8');
+
+        const result = await store.load();
+        expect(result).not.toBeNull();
+        expect(result!.services.eventlog.permissionLevel).toBe('read-only');
+      });
     });
   });
 });
