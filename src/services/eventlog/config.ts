@@ -294,6 +294,7 @@ export class EventLogConfigManager {
  * - Trigger service re-initialization when config changes
  */
 let globalConfigManager: EventLogConfigManager | null = null;
+let configManagerFrozen = false;
 
 /**
  * Get or create the global configuration manager
@@ -311,11 +312,23 @@ export function getConfigManager(): EventLogConfigManager {
  * Set the global configuration manager
  *
  * Primarily used in testing to inject a mock/test configuration.
+ * SECURITY: Rejected if manager has been frozen (SEC-014).
  *
  * @param manager - Configuration manager to set as global
  */
 export function setConfigManager(manager: EventLogConfigManager): void {
+  if (configManagerFrozen && process.env.NODE_ENV !== 'test') {
+    throw new Error('Config manager is frozen and cannot be replaced');
+  }
   globalConfigManager = manager;
+}
+
+/**
+ * SECURITY: Freeze the global config manager to prevent replacement (SEC-014).
+ * Once frozen, setConfigManager() will throw unless NODE_ENV=test.
+ */
+export function freezeConfigManager(): void {
+  configManagerFrozen = true;
 }
 
 /**
@@ -325,4 +338,5 @@ export function setConfigManager(manager: EventLogConfigManager): void {
  */
 export function resetConfigManager(): void {
   globalConfigManager = null;
+  configManagerFrozen = false;
 }
