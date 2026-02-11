@@ -242,4 +242,160 @@ describe('AuditLogger', () => {
       expect(auditLogger.getLogPath()).toBe(path.resolve(validPath));
     });
   });
+
+  describe('SEC-010: Audit log integrity protection', () => {
+    it('should include _hash and _previousHash in each entry', async () => {
+      await logger.log({
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+
+      const content = await fs.promises.readFile(logPath, 'utf-8');
+      const entry = JSON.parse(content.trim());
+      expect(entry._hash).toBeDefined();
+      expect(entry._previousHash).toBeDefined();
+      expect(entry._hash).toMatch(/^[0-9a-f]{64}$/);
+      expect(entry._previousHash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('should use genesis hash for first entry previousHash', async () => {
+      await logger.log({
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+
+      const content = await fs.promises.readFile(logPath, 'utf-8');
+      const entry = JSON.parse(content.trim());
+      expect(entry._previousHash).toBe('0'.repeat(64));
+    });
+
+    it('should chain hashes across entries', async () => {
+      await logger.log({
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+      await logger.log({
+        action: 'permission.change',
+        serviceId: 'eventlog',
+        previousValue: 'read-only',
+        newValue: 'read-write',
+        source: 'test',
+      });
+
+      const content = await fs.promises.readFile(logPath, 'utf-8');
+      const lines = content.trim().split('\n');
+      const entry1 = JSON.parse(lines[0]);
+      const entry2 = JSON.parse(lines[1]);
+
+      // Second entry's previousHash should be first entry's hash
+      expect(entry2._previousHash).toBe(entry1._hash);
+    });
+
+    it('should verify valid chain with verifyIntegrity()', async () => {
+      await logger.log({
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+      await logger.log({
+        action: 'service.disable',
+        serviceId: 'eventlog',
+        previousValue: true,
+        newValue: false,
+        source: 'test',
+      });
+
+      const result = await logger.verifyIntegrity();
+      expect(result.valid).toBe(true);
+      expect(result.entries).toBe(2);
+    });
+
+    it('should detect tampered entry content', async () => {
+      await logger.log({
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+
+      // Tamper with the log file: change serviceId
+      const content = await fs.promises.readFile(logPath, 'utf-8');
+      const tampered = content.replace('"eventlog"', '"filesearch"');
+      await fs.promises.writeFile(logPath, tampered, 'utf-8');
+
+      const result = await logger.verifyIntegrity();
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('invalid hash');
+    });
+
+    it('should detect deleted entries in chain', async () => {
+      await logger.log({
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+      await logger.log({
+        action: 'service.disable',
+        serviceId: 'eventlog',
+        previousValue: true,
+        newValue: false,
+        source: 'test',
+      });
+      await logger.log({
+        action: 'permission.change',
+        serviceId: 'eventlog',
+        previousValue: 'read-only',
+        newValue: 'read-write',
+        source: 'test',
+      });
+
+      // Delete the middle entry
+      const content = await fs.promises.readFile(logPath, 'utf-8');
+      const lines = content.trim().split('\n');
+      const tamperedContent = lines[0] + '\n' + lines[2] + '\n';
+      await fs.promises.writeFile(logPath, tamperedContent, 'utf-8');
+
+      const result = await logger.verifyIntegrity();
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('broken previous hash chain');
+    });
+
+    it('should verify empty log as valid', async () => {
+      const result = await logger.verifyIntegrity();
+      expect(result.valid).toBe(true);
+      expect(result.entries).toBe(0);
+    });
+
+    it('should detect entry with missing hash fields', async () => {
+      // Write an entry without hash fields
+      const fakeEntry = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        action: 'service.enable',
+        serviceId: 'eventlog',
+        previousValue: false,
+        newValue: true,
+        source: 'test',
+      });
+      await fs.promises.mkdir(path.dirname(logPath), { recursive: true });
+      await fs.promises.writeFile(logPath, fakeEntry + '\n', 'utf-8');
+
+      const result = await logger.verifyIntegrity();
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('missing hash fields');
+    });
+  });
 });

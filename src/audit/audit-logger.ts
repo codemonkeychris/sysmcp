@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { AuditEntry } from './types';
 import { validateStoragePath } from '../config/config-store';
 
@@ -51,6 +52,36 @@ export class AuditLoggerImpl implements AuditLogger {
   }
 
   /**
+   * Compute SHA-256 hash for chain integrity (SEC-010)
+   */
+  private computeEntryHash(entryJson: string, previousHash: string): string {
+    return crypto
+      .createHash('sha256')
+      .update(previousHash + entryJson)
+      .digest('hex');
+  }
+
+  /**
+   * Get the hash of the last entry in the log file
+   */
+  private async getLastEntryHash(): Promise<string> {
+    if (!fs.existsSync(this.logPath)) {
+      return '0'.repeat(64); // genesis hash
+    }
+    try {
+      const content = await fs.promises.readFile(this.logPath, 'utf-8');
+      const lines = content.trim().split('\n').filter((l) => l.length > 0);
+      if (lines.length === 0) {
+        return '0'.repeat(64);
+      }
+      const lastEntry = JSON.parse(lines[lines.length - 1]);
+      return lastEntry._hash || '0'.repeat(64);
+    } catch {
+      return '0'.repeat(64);
+    }
+  }
+
+  /**
    * Log an audit entry
    */
   async log(entry: Omit<AuditEntry, 'timestamp'>): Promise<void> {
@@ -66,8 +97,14 @@ export class AuditLoggerImpl implements AuditLogger {
     // Check rotation before writing
     await this.rotateIfNeeded();
 
+    // SECURITY: Chain hash for tamper detection (SEC-010)
+    const previousHash = await this.getLastEntryHash();
+    const entryJson = JSON.stringify(fullEntry);
+    const hash = this.computeEntryHash(entryJson, previousHash);
+    const hashedEntry = { ...fullEntry, _previousHash: previousHash, _hash: hash };
+
     // Append entry as JSONL (one JSON object per line)
-    const line = JSON.stringify(fullEntry) + '\n';
+    const line = JSON.stringify(hashedEntry) + '\n';
     await fs.promises.appendFile(this.logPath, line, 'utf-8');
   }
 
@@ -160,5 +197,52 @@ export class AuditLoggerImpl implements AuditLogger {
    */
   getLogPath(): string {
     return this.logPath;
+  }
+
+  /**
+   * SECURITY: Verify chain hash integrity of audit log (SEC-010)
+   * Returns true if all entries form a valid hash chain, false if tampered.
+   */
+  async verifyIntegrity(): Promise<{ valid: boolean; entries: number; error?: string }> {
+    if (!fs.existsSync(this.logPath)) {
+      return { valid: true, entries: 0 };
+    }
+
+    try {
+      const content = await fs.promises.readFile(this.logPath, 'utf-8');
+      const lines = content.trim().split('\n').filter((l) => l.length > 0);
+
+      if (lines.length === 0) {
+        return { valid: true, entries: 0 };
+      }
+
+      let expectedPreviousHash = '0'.repeat(64);
+
+      for (let i = 0; i < lines.length; i++) {
+        const parsed = JSON.parse(lines[i]);
+        const { _hash, _previousHash, ...entryData } = parsed;
+
+        if (!_hash || !_previousHash) {
+          return { valid: false, entries: lines.length, error: `Entry ${i} missing hash fields` };
+        }
+
+        if (_previousHash !== expectedPreviousHash) {
+          return { valid: false, entries: lines.length, error: `Entry ${i} has broken previous hash chain` };
+        }
+
+        const entryJson = JSON.stringify(entryData);
+        const computedHash = this.computeEntryHash(entryJson, _previousHash);
+
+        if (computedHash !== _hash) {
+          return { valid: false, entries: lines.length, error: `Entry ${i} has invalid hash (tampered)` };
+        }
+
+        expectedPreviousHash = _hash;
+      }
+
+      return { valid: true, entries: lines.length };
+    } catch (err) {
+      return { valid: false, entries: 0, error: `Failed to read log: ${err}` };
+    }
   }
 }
