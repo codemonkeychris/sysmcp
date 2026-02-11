@@ -5,7 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { ConfigStoreImpl, createDefaultConfig, PersistedConfig, validateConfig } from '../config-store';
+import { ConfigStoreImpl, createDefaultConfig, PersistedConfig, validateConfig, validateStoragePath } from '../config-store';
 
 describe('ConfigStore', () => {
   let tmpDir: string;
@@ -179,10 +179,11 @@ describe('ConfigStore', () => {
   describe('environment variable configuration', () => {
     it('should use SYSMCP_CONFIG_PATH when set', () => {
       const originalEnv = process.env.SYSMCP_CONFIG_PATH;
-      process.env.SYSMCP_CONFIG_PATH = '/custom/path/config.json';
+      const customPath = path.join(tmpDir, 'custom-config.json');
+      process.env.SYSMCP_CONFIG_PATH = customPath;
 
       const envStore = new ConfigStoreImpl();
-      expect(envStore.getStoragePath()).toBe('/custom/path/config.json');
+      expect(envStore.getStoragePath()).toBe(path.resolve(customPath));
 
       if (originalEnv !== undefined) {
         process.env.SYSMCP_CONFIG_PATH = originalEnv;
@@ -401,6 +402,79 @@ describe('ConfigStore', () => {
         const result = await store.load();
         expect(result).not.toBeNull();
         expect(result!.services.eventlog.permissionLevel).toBe('read-only');
+      });
+    });
+  });
+
+  describe('SEC-006: Path validation for config and audit paths', () => {
+    describe('validateStoragePath', () => {
+      it('should accept valid absolute paths with .json extension', () => {
+        const result = validateStoragePath(path.join(tmpDir, 'config.json'));
+        expect(result).toBe(path.resolve(tmpDir, 'config.json'));
+      });
+
+      it('should accept valid .jsonl extension', () => {
+        const result = validateStoragePath(path.join(tmpDir, 'audit.jsonl'));
+        expect(result).toBe(path.resolve(tmpDir, 'audit.jsonl'));
+      });
+
+      it('should reject path traversal with ../', () => {
+        expect(() =>
+          validateStoragePath('../../../etc/cron.d/malicious.json')
+        ).toThrow('path traversal detected');
+      });
+
+      it('should reject path traversal with backslash', () => {
+        expect(() =>
+          validateStoragePath('..\\..\\..\\Windows\\System32\\config.json')
+        ).toThrow('path traversal detected');
+      });
+
+      it('should reject empty string', () => {
+        expect(() => validateStoragePath('')).toThrow('must be a non-empty string');
+      });
+
+      it('should reject null', () => {
+        expect(() => validateStoragePath(null as any)).toThrow('must be a non-empty string');
+      });
+
+      it('should reject paths without .json/.jsonl extension', () => {
+        expect(() =>
+          validateStoragePath(path.join(tmpDir, 'config.txt'))
+        ).toThrow('must end with .json or .jsonl extension');
+      });
+
+      it('should reject .exe extension', () => {
+        expect(() =>
+          validateStoragePath(path.join(tmpDir, 'malware.exe'))
+        ).toThrow('must end with .json or .jsonl extension');
+      });
+    });
+
+    describe('ConfigStore constructor path validation', () => {
+      it('should reject traversal path in constructor', () => {
+        expect(() => new ConfigStoreImpl('../../../etc/passwd.json')).toThrow(
+          'path traversal detected'
+        );
+      });
+
+      it('should reject traversal in SYSMCP_CONFIG_PATH env var', () => {
+        const originalEnv = process.env.SYSMCP_CONFIG_PATH;
+        process.env.SYSMCP_CONFIG_PATH = '../../../etc/cron.d/malicious.json';
+
+        expect(() => new ConfigStoreImpl()).toThrow('path traversal detected');
+
+        if (originalEnv !== undefined) {
+          process.env.SYSMCP_CONFIG_PATH = originalEnv;
+        } else {
+          delete process.env.SYSMCP_CONFIG_PATH;
+        }
+      });
+
+      it('should accept valid path in constructor', () => {
+        const validPath = path.join(tmpDir, 'valid-config.json');
+        const store = new ConfigStoreImpl(validPath);
+        expect(store.getStoragePath()).toBe(path.resolve(validPath));
       });
     });
   });

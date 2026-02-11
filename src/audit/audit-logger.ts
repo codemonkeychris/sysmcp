@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { AuditEntry } from './types';
+import { validateStoragePath } from '../config/config-store';
 
 /**
  * AuditLogger configuration
@@ -41,8 +42,10 @@ export class AuditLoggerImpl implements AuditLogger {
   private maxFiles: number;
 
   constructor(config?: AuditLoggerConfig) {
-    this.logPath =
+    const rawPath =
       config?.logPath || path.join(process.cwd(), 'logs', 'audit.jsonl');
+    // SECURITY: Validate path to prevent traversal/injection (SEC-006)
+    this.logPath = validateStoragePath(rawPath, 'audit log path');
     this.maxFileSize = config?.maxFileSize ?? DEFAULT_MAX_FILE_SIZE;
     this.maxFiles = config?.maxFiles ?? DEFAULT_MAX_FILES;
   }

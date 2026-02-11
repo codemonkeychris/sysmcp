@@ -121,16 +121,47 @@ export function validateConfig(parsed: any): PersistedConfig {
 }
 
 /**
+ * SECURITY: Validate and canonicalize a storage path.
+ * Prevents path traversal attacks and symlink exploits.
+ * Rejects paths containing traversal sequences and ensures
+ * the resolved path stays within the expected base directory.
+ */
+export function validateStoragePath(inputPath: string, label: string = 'path'): string {
+  if (!inputPath || typeof inputPath !== 'string') {
+    throw new Error(`Invalid ${label}: must be a non-empty string`);
+  }
+
+  // Resolve to absolute path
+  const resolved = path.resolve(inputPath);
+
+  // Reject paths containing traversal sequences in the original input
+  const normalized = inputPath.replace(/\\/g, '/');
+  if (normalized.includes('../') || normalized.includes('/..')) {
+    throw new Error(`Invalid ${label}: path traversal detected`);
+  }
+
+  // Must end with .json or .jsonl extension
+  const ext = path.extname(resolved).toLowerCase();
+  if (ext !== '.json' && ext !== '.jsonl') {
+    throw new Error(`Invalid ${label}: must end with .json or .jsonl extension`);
+  }
+
+  return resolved;
+}
+
+/**
  * ConfigStore implementation with atomic writes
  */
 export class ConfigStoreImpl implements ConfigStore {
   private storagePath: string;
 
   constructor(storagePath?: string) {
-    this.storagePath =
+    const rawPath =
       storagePath ||
       process.env.SYSMCP_CONFIG_PATH ||
       path.join(process.cwd(), 'config', 'sysmcp-config.json');
+    // SECURITY: Validate path to prevent traversal/injection (SEC-006)
+    this.storagePath = validateStoragePath(rawPath, 'config path');
   }
 
   /**

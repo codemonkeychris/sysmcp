@@ -222,4 +222,24 @@ describe('AuditLogger', () => {
       expect(entries[0].action).toBe(action);
     });
   });
+
+  describe('SEC-006: Path validation for audit logger', () => {
+    it('should reject path traversal in constructor', () => {
+      expect(
+        () => new AuditLoggerImpl({ logPath: '../../../etc/cron.d/malicious.jsonl' })
+      ).toThrow('path traversal detected');
+    });
+
+    it('should reject path with invalid extension', () => {
+      expect(
+        () => new AuditLoggerImpl({ logPath: path.join(tmpDir, 'log.txt') })
+      ).toThrow('must end with .json or .jsonl extension');
+    });
+
+    it('should accept valid .jsonl path', () => {
+      const validPath = path.join(tmpDir, 'valid-audit.jsonl');
+      const auditLogger = new AuditLoggerImpl({ logPath: validPath });
+      expect(auditLogger.getLogPath()).toBe(path.resolve(validPath));
+    });
+  });
 });

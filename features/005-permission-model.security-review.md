@@ -60,9 +60,9 @@
 - **File**: `src/config/config-store.ts:53-56`, `src/audit/audit-logger.ts:43-45`
 - **Issue**: `SYSMCP_CONFIG_PATH` env var is used without path validation. If an attacker controls environment variables: symlink attack (point to a sensitive file, `save()` overwrites it), path traversal (`../../../../etc/cron.d/malicious`), or read sensitive files (`load()` reads any JSON file). Same issue applies to audit logger path.
 - **Fix**: Validate and canonicalize paths. Reject paths outside an expected base directory. Resolve symlinks and check the real path.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-007: Race condition in concurrent config writes
 - **File**: `src/config/config-store.ts:108`, `src/graphql/config.resolver.ts`
