@@ -379,10 +379,8 @@ export const configResolver = {
         enableAnonymization: manager.isAnonymizationEnabled(),
       };
 
-      // Reset to secure defaults
-      manager.setEnabled(false);
-      manager.setPermissionLevel('disabled');
-      manager.setAnonymizationEnabled(true);
+      // Reset to defaults
+      manager.resetToDefaults();
 
       await persistConfig(context);
 
@@ -391,7 +389,11 @@ export const configResolver = {
           action: 'config.reset',
           serviceId: args.serviceId,
           previousValue: previousConfig,
-          newValue: { enabled: false, permissionLevel: 'disabled', enableAnonymization: true },
+          newValue: {
+            enabled: manager.isEnabled(),
+            permissionLevel: manager.getPermissionLevel(),
+            enableAnonymization: manager.isAnonymizationEnabled(),
+          },
           source: 'graphql-mutation',
         });
       }

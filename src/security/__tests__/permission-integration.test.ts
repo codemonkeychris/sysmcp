@@ -32,19 +32,17 @@ describe('Permission Model Integration', () => {
   });
 
   describe('Secure Defaults', () => {
-    it('should deny eventlog reads by default (disabled)', () => {
+    it('should allow eventlog reads by default (read-only)', () => {
       const result = permissionChecker.check('eventlog', 'read');
-      expect(result.allowed).toBe(false);
-      expect(result.reason).toContain('disabled');
+      expect(result.allowed).toBe(true);
     });
 
-    it('should deny filesearch reads by default (disabled)', () => {
+    it('should allow filesearch reads by default (read-only)', () => {
       const result = permissionChecker.check('filesearch', 'read');
-      expect(result.allowed).toBe(false);
-      expect(result.reason).toContain('disabled');
+      expect(result.allowed).toBe(true);
     });
 
-    it('should deny writes for both services by default', () => {
+    it('should deny writes for both services by default (read-only)', () => {
       expect(permissionChecker.check('eventlog', 'write').allowed).toBe(false);
       expect(permissionChecker.check('filesearch', 'write').allowed).toBe(false);
     });
@@ -110,7 +108,9 @@ describe('Permission Model Integration', () => {
     it('should allow one service while denying another', () => {
       eventlogConfig.setEnabled(true);
       eventlogConfig.setPermissionLevel('read-only');
-      // filesearch remains disabled (default)
+      // Explicitly disable filesearch
+      filesearchConfig.setEnabled(false);
+      filesearchConfig.setPermissionLevel('disabled');
 
       expect(permissionChecker.check('eventlog', 'read').allowed).toBe(true);
       expect(permissionChecker.check('filesearch', 'read').allowed).toBe(false);
@@ -135,19 +135,19 @@ describe('Permission Model Integration', () => {
 
   describe('Test Override Mechanism', () => {
     it('should override config manager state for testing', () => {
-      // Config says disabled
-      expect(permissionChecker.check('eventlog', 'read').allowed).toBe(false);
-
-      // Override to enabled
-      permissionChecker.setTestOverrides({
-        eventlog: { enabled: true, permissionLevel: 'read-only' },
-      });
-
+      // Default is enabled + read-only, so reads are allowed
       expect(permissionChecker.check('eventlog', 'read').allowed).toBe(true);
 
-      // Clear override — back to config manager (disabled)
-      permissionChecker.clearTestOverrides();
+      // Override to disabled
+      permissionChecker.setTestOverrides({
+        eventlog: { enabled: false, permissionLevel: 'disabled' },
+      });
+
       expect(permissionChecker.check('eventlog', 'read').allowed).toBe(false);
+
+      // Clear override — back to config manager (read-only)
+      permissionChecker.clearTestOverrides();
+      expect(permissionChecker.check('eventlog', 'read').allowed).toBe(true);
     });
 
     it('should not allow test overrides outside test environment', () => {
@@ -171,10 +171,11 @@ describe('Permission Model Integration', () => {
       eventlogConfig.setEnabled(true);
       eventlogConfig.setPermissionLevel('read-write');
       expect(permissionChecker.check('eventlog', 'read').allowed).toBe(true);
+      expect(permissionChecker.check('eventlog', 'write').allowed).toBe(true);
 
-      // Reset
+      // Reset — back to read-only defaults
       eventlogConfig.resetToDefaults();
-      expect(permissionChecker.check('eventlog', 'read').allowed).toBe(false);
+      expect(permissionChecker.check('eventlog', 'read').allowed).toBe(true);
       expect(permissionChecker.check('eventlog', 'write').allowed).toBe(false);
     });
   });

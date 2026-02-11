@@ -95,8 +95,8 @@ export class EventLogConfigManager {
    */
   constructor(initialConfig?: EventLogConfig) {
     this.config = initialConfig || {
-      enabled: false,
-      permissionLevel: 'disabled',
+      enabled: true,
+      permissionLevel: 'read-only',
       maxResults: 10000,
       timeoutMs: 30000,
       enableAnonymization: true,
@@ -270,8 +270,8 @@ export class EventLogConfigManager {
    */
   public resetToDefaults(): void {
     this.config = {
-      enabled: false,
-      permissionLevel: 'disabled',
+      enabled: true,
+      permissionLevel: 'read-only',
       maxResults: 10000,
       timeoutMs: 30000,
       enableAnonymization: true,

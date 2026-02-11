@@ -19,12 +19,12 @@ describe('FileSearchConfigManager', () => {
   });
 
   describe('default values', () => {
-    it('should have enabled=false by default (secure default)', () => {
-      expect(configManager.isEnabled()).toBe(false);
+    it('should have enabled=true by default (usable out of box)', () => {
+      expect(configManager.isEnabled()).toBe(true);
     });
 
-    it('should have disabled permission by default (secure default)', () => {
-      expect(configManager.getPermissionLevel()).toBe('disabled');
+    it('should have read-only permission by default (secure default)', () => {
+      expect(configManager.getPermissionLevel()).toBe('read-only');
     });
 
     it('should have maxResults=10000 by default', () => {
@@ -137,18 +137,19 @@ describe('FileSearchConfigManager', () => {
   describe('getConfig', () => {
     it('should return copy of config', () => {
       const config = configManager.getConfig();
-      config.enabled = true;
-      expect(configManager.isEnabled()).toBe(false);
+      config.enabled = false;
+      expect(configManager.isEnabled()).toBe(true);
     });
   });
 
   describe('resetToDefaults', () => {
     it('should reset all values to defaults', () => {
-      configManager.setEnabled(true);
+      configManager.setEnabled(false);
       configManager.setMaxResults(500);
       configManager.setAllowedPaths(['C:\\test']);
       configManager.resetToDefaults();
-      expect(configManager.isEnabled()).toBe(false);
+      expect(configManager.isEnabled()).toBe(true);
+      expect(configManager.getPermissionLevel()).toBe('read-only');
       expect(configManager.getMaxResults()).toBe(10000);
       expect(configManager.getAllowedPaths()).toEqual([]);
     });
@@ -175,7 +176,7 @@ describe('FileSearchConfigManager', () => {
     it('should reset global manager', () => {
       setConfigManager(new FileSearchConfigManager({ enabled: true, permissionLevel: 'read-only' }));
       resetConfigManager();
-      expect(getConfigManager().isEnabled()).toBe(false);
+      expect(getConfigManager().isEnabled()).toBe(true);
     });
   });
 
