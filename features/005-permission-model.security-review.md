@@ -76,9 +76,9 @@
 - **File**: `src/server.ts:215`
 - **Issue**: `introspection: true` is hardcoded regardless of environment. Attackers can discover the full schema including all mutation names, types, and the exact structure of the permission model. Aids reconnaissance.
 - **Fix**: Disable introspection in production. Only enable when `NODE_ENV === 'development'` or via explicit opt-in config.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ---
 
@@ -88,49 +88,49 @@
 - **File**: `src/server.ts`
 - **Issue**: No rate limiting on GraphQL queries or mutations. An attacker can spam `enableService`/`disableService` to cause disk I/O exhaustion (each writes config + audit), rapidly toggle PII anonymization to create timing windows where data is exposed, or flood audit logs to trigger rotation and potentially hide entries.
 - **Fix**: Add rate limiting middleware (e.g. `express-rate-limit`) for GraphQL endpoint. Consider separate, stricter limits for admin mutations.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-010: Audit log has no integrity protection
 - **File**: `src/audit/audit-logger.ts`
 - **Issue**: The JSONL audit log is plain text with no checksums, MACs, chain hashing, or tamper detection. An attacker with filesystem access can silently modify, delete, or insert fake audit entries.
 - **Fix**: Add per-entry HMAC or chain hashing (each entry includes hash of previous entry). At minimum, document this as a known limitation and recommend external log forwarding.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-011: File permissions silently ignored on Windows
 - **File**: `src/config/config-store.ts:114-117`
 - **Issue**: `chmod(0o600)` is caught and silently ignored on Windows. The security-sensitive config file is created with default ACLs, potentially readable by other users on the system. This is the primary target platform.
 - **Fix**: Use Windows ACL APIs (e.g. `icacls` or a native module) to restrict file access, or document as a known limitation with mitigation guidance.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-012: User input reflected in error messages
 - **File**: `src/graphql/config.resolver.ts:140`, `src/security/permission-checker.ts:61`
 - **Issue**: `serviceId` is user-controlled input reflected directly into error messages (`Unknown service: ${serviceId}`). While the middleware doesn't expose `reason` in GraphQL responses, if these errors are ever rendered in a web UI without escaping, this becomes an XSS vector.
 - **Fix**: Sanitize or truncate `serviceId` in error messages. Consider using a generic message and logging the specific value separately.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-013: Non-atomic enable + permission level change
 - **File**: `src/graphql/config.resolver.ts:199-200`
 - **Issue**: `enableService` hardcodes permission level to `'read-only'`. There is no way to enable a service at a different level atomically. Between `enableService` and a subsequent `setPermissionLevel` call, the service is active at `read-only` — creating a brief window where the intended state hasn't been applied.
 - **Fix**: Allow `enableService` to accept an optional `level` parameter, or provide a combined `configureService` mutation that sets all fields atomically.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-014: Mutable global config singletons
 - **File**: `src/services/eventlog/config.ts:296`, `src/services/filesearch/config.ts:168`
 - **Issue**: `setConfigManager()` is exported and callable by any code in the process. An attacker (or compromised dependency) could replace the config manager with one that returns `enabled: true, permissionLevel: 'read-write'` to bypass all permission checks.
 - **Fix**: Remove or restrict the global setters. Use dependency injection exclusively. If globals are needed for backward compat, freeze after initialization.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ---
 
@@ -140,25 +140,25 @@
 - **File**: `src/security/permission-checker.ts:102`
 - **Issue**: `process.env.NODE_ENV` is modifiable at runtime by any code in the process. If production code or a dependency sets `NODE_ENV=test`, the test override mechanism becomes available, allowing full permission bypass via `setTestOverrides`.
 - **Fix**: Use a compile-time flag or a constructor-injected boolean instead of a runtime env check. Alternatively, strip test override code from production builds entirely.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-016: Inconsistent NODE_ENV guards on test override methods
 - **File**: `src/security/permission-checker.ts:111`
 - **Issue**: `setTestOverrides` checks `NODE_ENV`, but `clearTestOverrides` does not. While not directly exploitable, this inconsistency suggests the boundary isn't well-enforced.
 - **Fix**: Apply the same guard to all test-related methods, or remove the guard entirely and rely on build-time stripping.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-017: No CORS configuration
 - **File**: `src/server.ts`
 - **Issue**: No CORS middleware or headers are configured. If the GraphQL endpoint is accessible from a browser, cross-origin requests could interact with the unauthenticated admin mutations (SEC-002), allowing a malicious website to reconfigure the server.
 - **Fix**: Add CORS middleware restricting origins. At minimum, restrict to `localhost` origins only.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ---
 
