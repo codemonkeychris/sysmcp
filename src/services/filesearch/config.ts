@@ -52,8 +52,8 @@ export class FileSearchConfigManager {
    * Initialize the configuration manager
    *
    * MVP defaults:
-   * - Service is enabled
-   * - Permission level is read-only
+   * - Service is disabled (secure default)
+   * - Permission level is disabled
    * - Max results: 10000
    * - Timeout: 30000ms (30s)
    * - Anonymization: enabled
@@ -166,6 +166,7 @@ export class FileSearchConfigManager {
  * Global configuration manager instance
  */
 let globalConfigManager: FileSearchConfigManager | null = null;
+let configManagerFrozen = false;
 
 export function getConfigManager(): FileSearchConfigManager {
   if (!globalConfigManager) {
@@ -174,10 +175,24 @@ export function getConfigManager(): FileSearchConfigManager {
   return globalConfigManager;
 }
 
+/**
+ * SECURITY: Rejected if manager has been frozen (SEC-014).
+ */
 export function setConfigManager(manager: FileSearchConfigManager): void {
+  if (configManagerFrozen && process.env.NODE_ENV !== 'test') {
+    throw new Error('Config manager is frozen and cannot be replaced');
+  }
   globalConfigManager = manager;
+}
+
+/**
+ * SECURITY: Freeze the global config manager to prevent replacement (SEC-014).
+ */
+export function freezeConfigManager(): void {
+  configManagerFrozen = true;
 }
 
 export function resetConfigManager(): void {
   globalConfigManager = null;
+  configManagerFrozen = false;
 }

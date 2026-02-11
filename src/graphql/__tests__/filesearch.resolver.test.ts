@@ -53,6 +53,7 @@ describe('fileSearchResolver', () => {
     logger: mockLogger as any,
     fileSearchProvider: mockProvider as any,
     fileSearchAnonymizer: mockAnonymizer as any,
+    permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     ...overrides
   });
 
@@ -253,6 +254,37 @@ describe('fileSearchResolver', () => {
       expect(typeof f.dateCreated).toBe('string');
       // Should be valid ISO strings
       expect(new Date(f.dateModified).toISOString()).toBe(f.dateModified);
+    });
+  });
+
+  describe('SEC-004: Defense-in-depth mandatory permission checker', () => {
+    it('should deny when permissionChecker is null', async () => {
+      await expect(
+        fileSearchResolver(null, {}, makeContext({ permissionChecker: null }))
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should deny when permissionChecker is undefined', async () => {
+      await expect(
+        fileSearchResolver(null, {}, makeContext({ permissionChecker: undefined }))
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should return PermissionDenied error code when checker is missing', async () => {
+      try {
+        await fileSearchResolver(null, {}, makeContext({ permissionChecker: null }));
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileSearchGraphQLError);
+        expect((error as FileSearchGraphQLError).extensions?.code).toBe(FileSearchErrorCode.PermissionDenied);
+      }
+    });
+
+    it('should allow when permissionChecker is present and allows', async () => {
+      mockSearch.mockResolvedValue({ files: [], totalCount: 0, hasMore: false });
+      await expect(
+        fileSearchResolver(null, {}, makeContext())
+      ).resolves.toBeDefined();
     });
   });
 });

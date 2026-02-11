@@ -15,7 +15,10 @@
       "Bash(curl:*)",
       "Bash(npm run build:*)",
       "Bash(npm test:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd security review for Feature 005 permission model\n\nDocuments 17 security findings \\(3 critical, 5 high, 6 medium, 3 low\\)\nfrom a detailed file-by-file code audit of the permission model\nimplementation. Includes attack scenarios, fix recommendations, and\na prioritized remediation checklist.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
     ]
   }
 }

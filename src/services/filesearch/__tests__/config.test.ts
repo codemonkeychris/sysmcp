@@ -6,7 +6,8 @@ import {
   FileSearchConfigManager,
   getConfigManager,
   setConfigManager,
-  resetConfigManager
+  resetConfigManager,
+  freezeConfigManager
 } from '../config';
 
 describe('FileSearchConfigManager', () => {
@@ -18,11 +19,11 @@ describe('FileSearchConfigManager', () => {
   });
 
   describe('default values', () => {
-    it('should have enabled=true by default', () => {
+    it('should have enabled=true by default (usable out of box)', () => {
       expect(configManager.isEnabled()).toBe(true);
     });
 
-    it('should have read-only permission by default', () => {
+    it('should have read-only permission by default (secure default)', () => {
       expect(configManager.getPermissionLevel()).toBe('read-only');
     });
 
@@ -148,6 +149,7 @@ describe('FileSearchConfigManager', () => {
       configManager.setAllowedPaths(['C:\\test']);
       configManager.resetToDefaults();
       expect(configManager.isEnabled()).toBe(true);
+      expect(configManager.getPermissionLevel()).toBe('read-only');
       expect(configManager.getMaxResults()).toBe(10000);
       expect(configManager.getAllowedPaths()).toEqual([]);
     });
@@ -172,9 +174,48 @@ describe('FileSearchConfigManager', () => {
     });
 
     it('should reset global manager', () => {
-      setConfigManager(new FileSearchConfigManager({ enabled: false, permissionLevel: 'disabled' }));
+      setConfigManager(new FileSearchConfigManager({ enabled: true, permissionLevel: 'read-only' }));
       resetConfigManager();
       expect(getConfigManager().isEnabled()).toBe(true);
+    });
+  });
+
+  describe('SEC-014: Frozen config manager', () => {
+    afterEach(() => {
+      resetConfigManager();
+    });
+
+    it('should reject setConfigManager after freezing in non-test env', () => {
+      resetConfigManager();
+      setConfigManager(new FileSearchConfigManager());
+      freezeConfigManager();
+
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      expect(() => setConfigManager(new FileSearchConfigManager())).toThrow('frozen');
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should allow setConfigManager after freezing in test env', () => {
+      resetConfigManager();
+      setConfigManager(new FileSearchConfigManager());
+      freezeConfigManager();
+
+      expect(() => setConfigManager(new FileSearchConfigManager())).not.toThrow();
+    });
+
+    it('should unfreeze on reset', () => {
+      freezeConfigManager();
+      resetConfigManager();
+
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      expect(() => setConfigManager(new FileSearchConfigManager())).not.toThrow();
+
+      process.env.NODE_ENV = originalEnv;
     });
   });
 });

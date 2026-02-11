@@ -5,6 +5,8 @@
 
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { ApolloServer } from 'apollo-server-express';
+import rateLimit from 'express-rate-limit';
+import cors from 'cors';
 import { Logger } from './logger';
 import { ServiceRegistry } from './services/types';
 import { Config } from './config';
@@ -14,6 +16,13 @@ import { EventLogProvider } from './services/eventlog/provider';
 import { FileSearchProvider } from './services/filesearch/provider';
 import { PathAnonymizer } from './services/filesearch/path-anonymizer';
 import { PiiAnonymizer } from './services/eventlog/lib/src/anonymizer';
+import { EventLogConfigManager } from './services/eventlog/config';
+import { FileSearchConfigManager } from './services/filesearch/config';
+import { ConfigStoreImpl } from './config/config-store';
+import { AuditLoggerImpl } from './audit/audit-logger';
+import { createPermissionChecker, PermissionCheckerImpl } from './security/permission-checker';
+import { ServiceConfigProvider } from './security/types';
+import { createPermissionPlugin } from './graphql/permission-middleware';
 
 /**
  * Server instance interface
@@ -56,6 +65,11 @@ class ServerImpl implements Server {
   private eventlogProvider?: EventLogProvider;
   private fileSearchProvider?: FileSearchProvider;
   private fileSearchAnonymizer?: PathAnonymizer;
+  private eventlogConfigManager?: EventLogConfigManager;
+  private filesearchConfigManager?: FileSearchConfigManager;
+  private configStore?: ConfigStoreImpl;
+  private auditLogger?: AuditLoggerImpl;
+  private permissionChecker?: PermissionCheckerImpl;
   private startTime: number = Date.now();
   private isShuttingDown = false;
 
@@ -73,8 +87,39 @@ class ServerImpl implements Server {
    * Set up Express middleware
    */
   private setupMiddleware(): void {
+    // SECURITY: CORS - restrict to localhost origins only (SEC-017)
+    this.app.use(cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (non-browser clients, curl, etc.)
+        if (!origin) {
+          return callback(null, true);
+        }
+        // Only allow localhost origins
+        const allowedPatterns = [
+          /^https?:\/\/localhost(:\d+)?$/,
+          /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+          /^https?:\/\/\[::1\](:\d+)?$/,
+        ];
+        if (allowedPatterns.some(pattern => pattern.test(origin))) {
+          return callback(null, true);
+        }
+        callback(new Error('CORS: Origin not allowed'));
+      },
+      credentials: true,
+    }));
+
     // Parse JSON request bodies
     this.app.use(express.json());
+
+    // SECURITY: Rate limiting for GraphQL endpoint (SEC-009)
+    const graphqlLimiter = rateLimit({
+      windowMs: 60 * 1000, // 1 minute
+      max: 100, // 100 requests per minute
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: 'Too many requests, please try again later' },
+    });
+    this.app.use('/graphql', graphqlLimiter);
 
     // Request logging middleware
     this.app.use((req: Request, res: Response, next: NextFunction) => {
@@ -122,6 +167,42 @@ class ServerImpl implements Server {
    * Set up routes
    */
   private async setupRoutes(): Promise<void> {
+    // Initialize config store and load persisted configuration
+    this.configStore = new ConfigStoreImpl();
+    const persistedConfig = await this.configStore.load();
+
+    // Initialize config managers
+    this.eventlogConfigManager = new EventLogConfigManager();
+    this.filesearchConfigManager = new FileSearchConfigManager();
+
+    // Apply persisted config or use defaults
+    if (persistedConfig) {
+      this.logger.info('Loaded persisted configuration');
+      if (persistedConfig.services.eventlog) {
+        const ec = persistedConfig.services.eventlog;
+        this.eventlogConfigManager.setEnabled(ec.enabled);
+        this.eventlogConfigManager.setPermissionLevel(ec.permissionLevel);
+        this.eventlogConfigManager.setAnonymizationEnabled(ec.enableAnonymization);
+      }
+      if (persistedConfig.services.filesearch) {
+        const fc = persistedConfig.services.filesearch;
+        this.filesearchConfigManager.setEnabled(fc.enabled);
+        this.filesearchConfigManager.setPermissionLevel(fc.permissionLevel);
+        this.filesearchConfigManager.setAnonymizationEnabled(fc.enableAnonymization);
+      }
+    } else {
+      this.logger.info('No persisted config found, using defaults');
+    }
+
+    // Initialize audit logger
+    this.auditLogger = new AuditLoggerImpl();
+
+    // Create permission checker with config manager registry
+    const configProviders = new Map<string, ServiceConfigProvider>();
+    configProviders.set('eventlog', this.eventlogConfigManager);
+    configProviders.set('filesearch', this.filesearchConfigManager);
+    this.permissionChecker = createPermissionChecker(configProviders);
+
     // Initialize EventLog provider
     this.eventlogProvider = new EventLogProvider(this.logger, {
       enabled: true,
@@ -160,12 +241,15 @@ class ServerImpl implements Server {
     // Initialize FileSearch anonymizer
     this.fileSearchAnonymizer = new PathAnonymizer(new PiiAnonymizer());
 
-    // Initialize Apollo Server for GraphQL
+    // Initialize Apollo Server for GraphQL with permission plugin
     this.apolloServer = new ApolloServer({
       typeDefs,
       resolvers: createResolvers(this.registry, this.logger),
-      introspection: true,
-      context: async () => ({
+      // SECURITY: Only enable introspection in development or when explicitly configured (SEC-008)
+      introspection: this.config.graphqlIntrospection ?? this.config.nodeEnv === 'development',
+      plugins: [createPermissionPlugin(this.permissionChecker)],
+      context: async ({ req }: { req: any }) => ({
+        req,
         registry: this.registry,
         logger: this.logger,
         startTime: this.startTime,
@@ -175,6 +259,11 @@ class ServerImpl implements Server {
         eventlogMappingPath: undefined,
         fileSearchProvider: this.fileSearchProvider,
         fileSearchAnonymizer: this.fileSearchAnonymizer,
+        permissionChecker: this.permissionChecker,
+        configStore: this.configStore,
+        auditLogger: this.auditLogger,
+        eventlogConfigManager: this.eventlogConfigManager,
+        filesearchConfigManager: this.filesearchConfigManager,
       }),
     });
 

@@ -34,7 +34,8 @@ describe('EventLog GraphQL Resolver - Integration Tests', () => {
     context = {
       logger: mockLogger,
       eventlogProvider: mockProvider,
-      eventlogMappingPath: tempMappingPath
+      eventlogMappingPath: tempMappingPath,
+      permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     };
 
     // Clean up temp file

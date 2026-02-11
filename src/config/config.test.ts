@@ -97,9 +97,34 @@ describe('Configuration Manager', () => {
       expect(config.graphqlIntrospection).toBe(false);
     });
 
-    it('should default GRAPHQL_INTROSPECTION to true', () => {
+    it('should default GRAPHQL_INTROSPECTION to true in development', () => {
       const config = createConfig();
       expect(config.graphqlIntrospection).toBe(true);
+    });
+
+    // SEC-008 tests
+    it('SEC-008: should default GRAPHQL_INTROSPECTION to false in production when not set', () => {
+      process.env.NODE_ENV = 'production';
+      // Prevent .env file from setting GRAPHQL_INTROSPECTION
+      const existsSync = jest.spyOn(require('fs'), 'existsSync').mockReturnValue(false);
+      const config = createConfig();
+      expect(config.graphqlIntrospection).toBe(false);
+      existsSync.mockRestore();
+    });
+
+    it('SEC-008: should allow explicit GRAPHQL_INTROSPECTION=true even in production', () => {
+      process.env.NODE_ENV = 'production';
+      process.env.GRAPHQL_INTROSPECTION = 'true';
+      const config = createConfig();
+      expect(config.graphqlIntrospection).toBe(true);
+    });
+
+    it('SEC-008: should default GRAPHQL_INTROSPECTION to true in test when not set', () => {
+      process.env.NODE_ENV = 'test';
+      const existsSync = jest.spyOn(require('fs'), 'existsSync').mockReturnValue(false);
+      const config = createConfig();
+      expect(config.graphqlIntrospection).toBe(true);
+      existsSync.mockRestore();
     });
 
     it('should load MAX_QUERY_DEPTH from environment', () => {

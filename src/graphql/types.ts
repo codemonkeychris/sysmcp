@@ -62,3 +62,22 @@ export interface ServiceOperationResult {
   service?: GQLService;
   error?: string;
 }
+
+/**
+ * Permission level GraphQL enum values
+ */
+export enum GQLPermissionLevel {
+  DISABLED = 'DISABLED',
+  READ_ONLY = 'READ_ONLY',
+  READ_WRITE = 'READ_WRITE',
+}
+
+/**
+ * Service configuration GraphQL type
+ */
+export interface GQLServiceConfig {
+  serviceId: string;
+  enabled: boolean;
+  permissionLevel: GQLPermissionLevel;
+  enableAnonymization: boolean;
+}

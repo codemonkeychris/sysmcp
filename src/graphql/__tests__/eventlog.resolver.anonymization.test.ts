@@ -32,7 +32,8 @@ describe('EventLog GraphQL Resolver - Anonymization', () => {
     context = {
       logger: mockLogger,
       eventlogProvider: mockProvider,
-      eventlogMappingPath: tempMappingPath
+      eventlogMappingPath: tempMappingPath,
+      permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     };
 
     // Clean up temp file
@@ -416,7 +417,8 @@ describe('EventLog GraphQL Resolver - Anonymization', () => {
     it('should work without anonymization context', async () => {
       const contextNoAnon = {
         logger: mockLogger,
-        eventlogProvider: mockProvider
+        eventlogProvider: mockProvider,
+        permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
       };
 
       mockProvider.query = jest.fn().mockResolvedValue({

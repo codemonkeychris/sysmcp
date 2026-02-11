@@ -16,6 +16,7 @@ import {
 import { PiiAnonymizer } from '../services/eventlog/lib/src/anonymizer';
 import { EventLogMetricsCollector } from '../services/eventlog/metrics';
 import { encodeCursor, decodeCursor, isValidCursor, CursorPosition } from './cursor';
+import { PermissionChecker } from '../security/permission-checker';
 
 /**
  * Custom GraphQL error codes for EventLog operations
@@ -86,6 +87,7 @@ interface ResolverContext {
   eventlogAnonymizer?: PiiAnonymizer;
   eventlogMappingPath?: string;
   eventlogMetricsCollector?: EventLogMetricsCollector;
+  permissionChecker?: PermissionChecker;
 }
 
 /**
@@ -240,6 +242,24 @@ export async function eventLogsResolver(
   const logger = context.logger.child('eventlog-resolver');
 
   try {
+    // SECURITY: Defense-in-depth permission check (second layer after middleware)
+    // Mandatory — if checker is missing, deny access (fail-closed)
+    if (!context.permissionChecker) {
+      throw new EventLogGraphQLError(
+        'Permission denied',
+        EventLogErrorCode.PermissionDenied,
+        'Permission checker not available'
+      );
+    }
+    const permCheck = context.permissionChecker.check('eventlog', 'read');
+    if (!permCheck.allowed) {
+      throw new EventLogGraphQLError(
+        'Permission denied',
+        EventLogErrorCode.PermissionDenied,
+        permCheck.reason
+      );
+    }
+
     // Validate input
     validateArgs(args);
 

@@ -84,12 +84,15 @@
 - PII anonymization on file paths containing user profiles
 - Metrics: search count, response time
 
-#### Feature 4: PII Anonymization Engine
-- Identifier recognition: usernames, IPs, file paths, domains
-- Anonymization strategy: consistent hashing with opt-in de-anonymization
-- Global toggle in settings: PII-locked vs. PII-exposed
-- Per-service audit trail of when PII was accessed
-- Reversible on client-side (user can de-hash if they want)
+#### Feature 4: PII Anonymization Engine ✅ COMPLETE
+- ✅ Identifier recognition: usernames, IPs, file paths, domains, emails, computer names (7 PII types)
+- ✅ Anonymization strategy: consistent SHA-256 hashing (one-way by design for stronger security)
+- ✅ Global toggle in settings: PII-locked vs. PII-exposed (per-service config managers)
+- ✅ Per-service audit trail of when PII was accessed (metrics collectors + resolver logging)
+- ✅ Centralized engine (`PiiAnonymizer`) shared by EventLog and FileSearch services
+- ✅ Persistent mapping for consistency across restarts (`AnonymizationStore`)
+- Note: Reversible de-anonymization was deliberately omitted in favor of one-way hashing (stronger security posture)
+- Implemented incrementally during Features 2 and 3
 
 #### Feature 5: Permission Model
 - Service-level toggle: enabled/disabled
@@ -251,11 +254,12 @@ WS /api/live-updates
   - Add filtering: file type, size, date
   - Implement pagination
 
-- [ ] **Task 1.5**: PII Anonymization engine
-  - Create identifier recognition patterns (username, IP, file path, domain)
-  - Implement consistent hashing anonymization
-  - Add global PII-filter toggle
-  - Implement de-anonymization on client-side (reversible)
+- [x] **Task 1.5**: PII Anonymization engine ✅ (completed during Features 2 & 3)
+  - ✅ Identifier recognition patterns (username, IP, file path, domain, email, computer name)
+  - ✅ Consistent SHA-256 hashing anonymization
+  - ✅ Global PII-filter toggle (per-service config managers)
+  - ✅ Persistent mapping via AnonymizationStore
+  - Note: De-anonymization omitted by design (one-way hashing for stronger security)
 
 - [ ] **Task 1.6**: Permission model
   - Implement service enable/disable toggle

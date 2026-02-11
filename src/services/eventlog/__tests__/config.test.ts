@@ -10,7 +10,8 @@ import {
   PermissionLevel,
   getConfigManager,
   setConfigManager,
-  resetConfigManager
+  resetConfigManager,
+  freezeConfigManager
 } from '../config';
 
 describe('EventLogConfigManager', () => {
@@ -302,7 +303,7 @@ describe('EventLogConfigManager', () => {
   });
 
   describe('Configuration Scenarios (Future UI Integration)', () => {
-    it('should support workflow: initial state to disabled', () => {
+    it('should support workflow: initial state then disable', () => {
       expect(manager.isEnabled()).toBe(true);
 
       // User disables service via System Tray UI
@@ -374,8 +375,60 @@ describe('EventLogConfigManager', () => {
       manager.setLogLevel('debug');
       expect(manager.getPermissionLevel()).toBe('read-only'); // Unchanged
 
-      manager.setPermissionLevel('disabled');
+      manager.setPermissionLevel('read-write');
       expect(manager.getLogLevel()).toBe('debug'); // Unchanged
+    });
+  });
+
+  describe('SEC-014: Frozen config manager', () => {
+    afterEach(() => {
+      resetConfigManager();
+    });
+
+    it('should allow setConfigManager before freezing', () => {
+      resetConfigManager();
+      const manager = new EventLogConfigManager();
+      expect(() => setConfigManager(manager)).not.toThrow();
+    });
+
+    it('should reject setConfigManager after freezing in non-test env', () => {
+      resetConfigManager();
+      const manager1 = new EventLogConfigManager();
+      setConfigManager(manager1);
+      freezeConfigManager();
+
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      const manager2 = new EventLogConfigManager();
+      expect(() => setConfigManager(manager2)).toThrow('frozen and cannot be replaced');
+
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('should allow setConfigManager after freezing in test env', () => {
+      resetConfigManager();
+      const manager1 = new EventLogConfigManager();
+      setConfigManager(manager1);
+      freezeConfigManager();
+
+      // In test env, should still allow replacement
+      const manager2 = new EventLogConfigManager();
+      expect(() => setConfigManager(manager2)).not.toThrow();
+    });
+
+    it('should unfreeze on reset', () => {
+      freezeConfigManager();
+      resetConfigManager();
+
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      // After reset, should be unfrozen
+      const manager = new EventLogConfigManager();
+      expect(() => setConfigManager(manager)).not.toThrow();
+
+      process.env.NODE_ENV = originalEnv;
     });
   });
 });
