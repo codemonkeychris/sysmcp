@@ -376,4 +376,60 @@ describe('Config Resolver', () => {
       expect(callCount).toBe(2);
     });
   });
+
+  describe('SEC-012: User input sanitized in error messages', () => {
+    it('should strip HTML/script tags from serviceId in error messages', async () => {
+      const context = createContext();
+      const maliciousId = '<script>alert("xss")</script>';
+
+      try {
+        await configResolver.Query.serviceConfig(null, { serviceId: maliciousId }, context);
+        fail('Should have thrown');
+      } catch (e: any) {
+        expect(e.message).toContain('Unknown service');
+        // Should not contain HTML/XSS-relevant characters
+        expect(e.message).not.toContain('<');
+        expect(e.message).not.toContain('>');
+        expect(e.message).not.toContain('"');
+        expect(e.message).not.toContain('(');
+        expect(e.message).not.toContain(')');
+      }
+    });
+
+    it('should truncate very long serviceId in error messages', async () => {
+      const context = createContext();
+      const longId = 'a'.repeat(200);
+
+      try {
+        await configResolver.Query.serviceConfig(null, { serviceId: longId }, context);
+      } catch (e: any) {
+        // Should be truncated to 50 chars max
+        const serviceIdInMsg = e.message.replace('Unknown service: ', '');
+        expect(serviceIdInMsg.length).toBeLessThanOrEqual(50);
+      }
+    });
+
+    it('should handle normal serviceId values correctly', async () => {
+      const context = createContext();
+
+      // Valid service IDs should work normally
+      const result = await configResolver.Query.serviceConfig(
+        null, { serviceId: 'eventlog' }, context
+      );
+      expect(result).toBeDefined();
+    });
+
+    it('should sanitize special characters from unknown serviceId', async () => {
+      const context = createContext();
+      const specialId = 'test&id=1"onmouseover="alert(1)"';
+
+      try {
+        await configResolver.Query.serviceConfig(null, { serviceId: specialId }, context);
+      } catch (e: any) {
+        expect(e.message).not.toContain('&');
+        expect(e.message).not.toContain('"');
+        expect(e.message).not.toContain('=');
+      }
+    });
+  });
 });

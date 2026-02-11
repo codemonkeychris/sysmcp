@@ -314,4 +314,29 @@ describe('PermissionChecker', () => {
       expect(pc.check('eventlog', 'read').allowed).toBe(true);
     });
   });
+
+  describe('SEC-012: Sanitized serviceId in error messages', () => {
+    it('should strip HTML from unknown serviceId in reason', () => {
+      const result = checker.check('<script>alert(1)</script>' as any, 'read');
+      expect(result.allowed).toBe(false);
+      expect(result.reason).not.toContain('<script>');
+      expect(result.reason).not.toContain('<');
+      expect(result.reason).not.toContain('>');
+    });
+
+    it('should truncate long serviceId in reason', () => {
+      const longId = 'x'.repeat(200);
+      const result = checker.check(longId as any, 'read');
+      expect(result.allowed).toBe(false);
+      // Reason should not contain the full 200-char string
+      expect(result.reason!.length).toBeLessThan(100);
+    });
+
+    it('should strip special characters from serviceId in reason', () => {
+      const result = checker.check('"onmouseover="alert(1)"' as any, 'read');
+      expect(result.allowed).toBe(false);
+      expect(result.reason).not.toContain('"');
+      expect(result.reason).not.toContain('=');
+    });
+  });
 });

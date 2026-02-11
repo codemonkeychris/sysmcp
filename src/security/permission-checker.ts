@@ -58,7 +58,9 @@ export class PermissionCheckerImpl implements PermissionChecker {
     // Look up config provider for service
     const provider = this.configProviders.get(serviceId);
     if (!provider) {
-      return { allowed: false, reason: `Unknown service: ${serviceId}` };
+      // SECURITY: Sanitize serviceId in error messages (SEC-012)
+      const safeId = String(serviceId).slice(0, 50).replace(/[^a-zA-Z0-9_\-]/g, '');
+      return { allowed: false, reason: `Unknown service: ${safeId}` };
     }
 
     return this.applyPermissionLogic(

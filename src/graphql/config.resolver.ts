@@ -163,11 +163,20 @@ async function persistConfigInner(context: ConfigResolverContext): Promise<void>
 }
 
 /**
+ * SECURITY: Sanitize serviceId for safe use in error messages (SEC-012).
+ * Truncates and strips non-alphanumeric characters to prevent XSS.
+ */
+function sanitizeServiceId(serviceId: string): string {
+  const truncated = String(serviceId).slice(0, 50);
+  return truncated.replace(/[^a-zA-Z0-9_\-]/g, '');
+}
+
+/**
  * Validate that a serviceId is known
  */
 function validateServiceId(serviceId: string): void {
   if (!(KNOWN_SERVICE_IDS as readonly string[]).includes(serviceId)) {
-    throw new GraphQLError(`Unknown service: ${serviceId}`, {
+    throw new GraphQLError(`Unknown service: ${sanitizeServiceId(serviceId)}`, {
       extensions: { code: 'UNKNOWN_SERVICE' },
     });
   }
