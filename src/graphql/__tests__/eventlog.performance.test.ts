@@ -33,7 +33,8 @@ describe('EventLog Performance Tests', () => {
 
     context = {
       logger: mockLogger,
-      eventlogProvider: mockProvider
+      eventlogProvider: mockProvider,
+      permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     };
   });
 

@@ -42,7 +42,8 @@ describe('EventLog GraphQL Resolver - Metrics Integration', () => {
     context = {
       logger: mockLogger,
       eventlogProvider: mockProvider,
-      eventlogMetricsCollector: metricsCollector
+      eventlogMetricsCollector: metricsCollector,
+      permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     };
   });
 

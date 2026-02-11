@@ -119,14 +119,19 @@ export async function fileSearchResolver(
 
   try {
     // SECURITY: Defense-in-depth permission check (second layer after middleware)
-    if (context.permissionChecker) {
-      const permCheck = context.permissionChecker.check('filesearch', 'read');
-      if (!permCheck.allowed) {
-        throw new FileSearchGraphQLError(
-          'Permission denied',
-          FileSearchErrorCode.PermissionDenied
-        );
-      }
+    // Mandatory — if checker is missing, deny access (fail-closed)
+    if (!context.permissionChecker) {
+      throw new FileSearchGraphQLError(
+        'Permission denied',
+        FileSearchErrorCode.PermissionDenied
+      );
+    }
+    const permCheck = context.permissionChecker.check('filesearch', 'read');
+    if (!permCheck.allowed) {
+      throw new FileSearchGraphQLError(
+        'Permission denied',
+        FileSearchErrorCode.PermissionDenied
+      );
     }
 
     // Check service availability

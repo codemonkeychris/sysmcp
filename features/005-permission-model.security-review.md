@@ -44,9 +44,9 @@
 - **File**: `src/graphql/eventlog.resolver.ts:246`, `src/graphql/filesearch.resolver.ts:122`
 - **Issue**: Both resolvers guard with `if (context.permissionChecker)`. If the permission checker fails to initialize or the server context is misconfigured, the defense-in-depth layer is silently bypassed rather than failing safe.
 - **Fix**: Make the permission checker mandatory. If it is `null` or `undefined`, throw a hard error and deny the request.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-005: No schema validation on config file load
 - **File**: `src/config/config-store.ts:69-89`

@@ -26,7 +26,8 @@ describe('EventLog GraphQL Resolver', () => {
 
     context = {
       logger: mockLogger,
-      eventlogProvider: mockProvider
+      eventlogProvider: mockProvider,
+      permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     };
   });
 
@@ -766,6 +767,59 @@ describe('EventLog GraphQL Resolver', () => {
           }
         })
       );
+    });
+  });
+
+  describe('SEC-004: Defense-in-depth mandatory permission checker', () => {
+    it('should deny when permissionChecker is null', async () => {
+      const contextWithoutChecker = {
+        logger: mockLogger,
+        eventlogProvider: mockProvider,
+        permissionChecker: null as any,
+      };
+
+      await expect(
+        eventLogsResolver(null, { logName: 'System', limit: 100, offset: 0 }, contextWithoutChecker)
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should deny when permissionChecker is undefined', async () => {
+      const contextWithoutChecker = {
+        logger: mockLogger,
+        eventlogProvider: mockProvider,
+      } as any;
+
+      await expect(
+        eventLogsResolver(null, { logName: 'System', limit: 100, offset: 0 }, contextWithoutChecker)
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should return PermissionDenied error code when checker is missing', async () => {
+      const contextWithoutChecker = {
+        logger: mockLogger,
+        eventlogProvider: mockProvider,
+      } as any;
+
+      try {
+        await eventLogsResolver(null, { logName: 'System', limit: 100, offset: 0 }, contextWithoutChecker);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(EventLogGraphQLError);
+        expect((error as EventLogGraphQLError).code).toBe(EventLogErrorCode.PermissionDenied);
+      }
+    });
+
+    it('should allow when permissionChecker is present and allows', async () => {
+      mockProvider.query = jest.fn().mockResolvedValue({
+        entries: [],
+        totalCount: 0,
+        hasMore: false,
+      });
+
+      // context already has a permissionChecker that allows
+      await expect(
+        eventLogsResolver(null, { logName: 'System', limit: 100, offset: 0 }, context)
+      ).resolves.toBeDefined();
     });
   });
 });

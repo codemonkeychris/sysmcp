@@ -4,7 +4,8 @@
       "mcp__sysmcp__test_hello",
       "mcp__sysmcp__eventlog_query",
       "Bash(curl:*)",
-      "mcp__sysmcp__eventlog_list_logs"
+      "mcp__sysmcp__eventlog_list_logs",
+      "mcp__sysmcp__filesearch_query"
     ]
   },
   "enableAllProjectMcpServers": true,

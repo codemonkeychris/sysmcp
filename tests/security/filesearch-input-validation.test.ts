@@ -32,6 +32,7 @@ const mockLogger = {
 const makeContext = (overrides: any = {}) => ({
   logger: mockLogger as any,
   fileSearchProvider: mockProvider as any,
+  permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
   ...overrides
 });
 

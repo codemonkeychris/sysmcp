@@ -38,7 +38,8 @@ describe('EventLog GraphQL Resolver - Security Tests for PII Anonymization', () 
 
     context = {
       logger: mockLogger,
-      eventlogProvider: mockProvider
+      eventlogProvider: mockProvider,
+      permissionChecker: { check: jest.fn(() => ({ allowed: true })) },
     };
   });
 

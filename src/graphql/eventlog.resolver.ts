@@ -243,15 +243,21 @@ export async function eventLogsResolver(
 
   try {
     // SECURITY: Defense-in-depth permission check (second layer after middleware)
-    if (context.permissionChecker) {
-      const permCheck = context.permissionChecker.check('eventlog', 'read');
-      if (!permCheck.allowed) {
-        throw new EventLogGraphQLError(
-          'Permission denied',
-          EventLogErrorCode.PermissionDenied,
-          permCheck.reason
-        );
-      }
+    // Mandatory — if checker is missing, deny access (fail-closed)
+    if (!context.permissionChecker) {
+      throw new EventLogGraphQLError(
+        'Permission denied',
+        EventLogErrorCode.PermissionDenied,
+        'Permission checker not available'
+      );
+    }
+    const permCheck = context.permissionChecker.check('eventlog', 'read');
+    if (!permCheck.allowed) {
+      throw new EventLogGraphQLError(
+        'Permission denied',
+        EventLogErrorCode.PermissionDenied,
+        permCheck.reason
+      );
     }
 
     // Validate input
