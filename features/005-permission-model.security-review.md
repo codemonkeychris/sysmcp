@@ -14,9 +14,9 @@
 - **Issue**: `applyPermissionLogic` uses a blacklist pattern. It checks for `'disabled'` and `'read-only'` as special cases, then falls through to `allowed: true` for any other value. If an attacker edits the config file on disk and sets `permissionLevel` to an unrecognized string (e.g. `"admin"`, `"rwx"`, `"foo"`), the logic grants full read+write access.
 - **Attack**: Modify `config/sysmcp-config.json` with `"permissionLevel": "anything"` to bypass all permission checks.
 - **Fix**: Rewrite as a whitelist. Explicitly allow `'read-write'` for all ops, `'read-only'` for reads only, deny everything else by default.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ### SEC-002: Admin mutations are completely unauthenticated
 - **File**: `src/graphql/permission-middleware.ts:28-45`

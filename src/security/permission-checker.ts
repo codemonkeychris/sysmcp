@@ -70,7 +70,9 @@ export class PermissionCheckerImpl implements PermissionChecker {
   }
 
   /**
-   * Apply permission logic based on enabled state and permission level
+   * Apply permission logic based on enabled state and permission level.
+   * SECURITY: Uses whitelist pattern — only explicitly recognized levels are allowed.
+   * Unknown levels are denied by default.
    */
   private applyPermissionLogic(
     enabled: boolean,
@@ -83,13 +85,20 @@ export class PermissionCheckerImpl implements PermissionChecker {
       return { allowed: false, reason: `Service '${serviceId}' is disabled` };
     }
 
-    // Read-only services deny writes
-    if (permissionLevel === 'read-only' && operation === 'write') {
-      return { allowed: false, reason: `Service '${serviceId}' is read-only` };
+    // SECURITY: Whitelist pattern — explicitly match known levels
+    if (permissionLevel === 'read-only') {
+      if (operation === 'write') {
+        return { allowed: false, reason: `Service '${serviceId}' is read-only` };
+      }
+      return { allowed: true };
     }
 
-    // read-only + read, or read-write + any → allowed
-    return { allowed: true };
+    if (permissionLevel === 'read-write') {
+      return { allowed: true };
+    }
+
+    // SECURITY: Unknown permission level — deny by default (fail-closed)
+    return { allowed: false, reason: `Unknown permission level for service '${serviceId}'` };
   }
 
   /**

@@ -260,6 +260,53 @@ describe('PermissionChecker', () => {
     });
   });
 
+  describe('SEC-001: Unknown permission levels denied (whitelist)', () => {
+    const unknownLevels = ['admin', 'rwx', 'foo', 'READWRITE', 'read_write', 'superuser', '', ' '];
+
+    it.each(unknownLevels)(
+      'should deny read for unknown permission level "%s"',
+      (level) => {
+        providers.set('eventlog', {
+          isEnabled: jest.fn(() => true),
+          getPermissionLevel: jest.fn(() => level as PermissionLevel),
+        });
+        checker = createPermissionChecker(providers);
+
+        const result = checker.check('eventlog', 'read');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('Unknown permission level');
+      }
+    );
+
+    it.each(unknownLevels)(
+      'should deny write for unknown permission level "%s"',
+      (level) => {
+        providers.set('eventlog', {
+          isEnabled: jest.fn(() => true),
+          getPermissionLevel: jest.fn(() => level as PermissionLevel),
+        });
+        checker = createPermissionChecker(providers);
+
+        const result = checker.check('eventlog', 'write');
+        expect(result.allowed).toBe(false);
+        expect(result.reason).toContain('Unknown permission level');
+      }
+    );
+
+    it('should still allow read-only reads (positive case)', () => {
+      providers.set('eventlog', createMockProvider(true, 'read-only'));
+      checker = createPermissionChecker(providers);
+      expect(checker.check('eventlog', 'read').allowed).toBe(true);
+    });
+
+    it('should still allow read-write for both ops (positive case)', () => {
+      providers.set('eventlog', createMockProvider(true, 'read-write'));
+      checker = createPermissionChecker(providers);
+      expect(checker.check('eventlog', 'read').allowed).toBe(true);
+      expect(checker.check('eventlog', 'write').allowed).toBe(true);
+    });
+  });
+
   describe('Factory Function', () => {
     it('should create a working PermissionChecker', () => {
       const pc = createPermissionChecker(providers);
