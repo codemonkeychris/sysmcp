@@ -6,6 +6,7 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { ApolloServer } from 'apollo-server-express';
 import rateLimit from 'express-rate-limit';
+import cors from 'cors';
 import { Logger } from './logger';
 import { ServiceRegistry } from './services/types';
 import { Config } from './config';
@@ -86,6 +87,27 @@ class ServerImpl implements Server {
    * Set up Express middleware
    */
   private setupMiddleware(): void {
+    // SECURITY: CORS - restrict to localhost origins only (SEC-017)
+    this.app.use(cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (non-browser clients, curl, etc.)
+        if (!origin) {
+          return callback(null, true);
+        }
+        // Only allow localhost origins
+        const allowedPatterns = [
+          /^https?:\/\/localhost(:\d+)?$/,
+          /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+          /^https?:\/\/\[::1\](:\d+)?$/,
+        ];
+        if (allowedPatterns.some(pattern => pattern.test(origin))) {
+          return callback(null, true);
+        }
+        callback(new Error('CORS: Origin not allowed'));
+      },
+      credentials: true,
+    }));
+
     // Parse JSON request bodies
     this.app.use(express.json());
 
