@@ -45,7 +45,8 @@ const BYPASS_FIELDS = new Set([
 ]);
 
 /**
- * Extract top-level field names from a GraphQL operation
+ * Extract top-level field names from a GraphQL operation.
+ * SECURITY: Throws on parse failure to ensure fail-closed behavior.
  */
 function getTopLevelFields(document: any): string[] {
   const fields: string[] = [];
@@ -60,7 +61,10 @@ function getTopLevelFields(document: any): string[] {
       }
     }
   } catch {
-    // If parsing fails, return empty (will allow through)
+    // SECURITY: Fail-closed — if we can't parse the document, deny the request
+    throw new GraphQLError('Permission denied: unable to parse request', {
+      extensions: { code: 'PERMISSION_DENIED' },
+    });
   }
   return fields;
 }

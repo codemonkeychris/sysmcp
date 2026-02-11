@@ -32,9 +32,9 @@
 - **Issue**: `getTopLevelFields` catches all exceptions and returns an empty array `[]`. The middleware loop iterates over an empty array, so no permission checks run. A malformed or unusual GraphQL document that causes field extraction to throw will bypass all permission checks.
 - **Attack**: Craft a GraphQL document with unexpected AST structure that triggers an exception in the field parser.
 - **Fix**: On parse failure, the middleware must deny the request (fail-closed). Return an error or a sentinel value that triggers denial.
-- [ ] Fixed
-- [ ] Test added
-- [ ] Verified
+- [x] Fixed
+- [x] Test added
+- [x] Verified
 
 ---
 

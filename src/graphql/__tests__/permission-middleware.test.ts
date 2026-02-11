@@ -190,4 +190,64 @@ describe('Permission Middleware', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('SEC-003: Middleware fails closed on parse error', () => {
+    it('should deny request when document has no definitions', async () => {
+      const plugin = createPermissionPlugin(checker);
+      const handlers = await (plugin as any).requestDidStart();
+
+      // Document with no definitions property causes parse to throw
+      const malformedDoc = { /* no definitions */ };
+
+      await expect(
+        handlers.responseForOperation({ document: malformedDoc })
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should deny request when definitions is not iterable', async () => {
+      const plugin = createPermissionPlugin(checker);
+      const handlers = await (plugin as any).requestDidStart();
+
+      const malformedDoc = { definitions: 42 };
+
+      await expect(
+        handlers.responseForOperation({ document: malformedDoc })
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should deny request with unexpected AST structure', async () => {
+      const plugin = createPermissionPlugin(checker);
+      const handlers = await (plugin as any).requestDidStart();
+
+      // Definition with kind but null selectionSet
+      const malformedDoc = {
+        definitions: [{ kind: 'OperationDefinition', selectionSet: null }],
+      };
+
+      await expect(
+        handlers.responseForOperation({ document: malformedDoc })
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should return PERMISSION_DENIED code on parse error', async () => {
+      const plugin = createPermissionPlugin(checker);
+      const handlers = await (plugin as any).requestDidStart();
+
+      const malformedDoc = { definitions: null };
+
+      try {
+        await handlers.responseForOperation({ document: malformedDoc });
+        fail('Should have thrown');
+      } catch (error: any) {
+        expect(error.extensions?.code).toBe('PERMISSION_DENIED');
+      }
+    });
+
+    it('should still allow valid queries (positive case)', async () => {
+      const result = await executePlugin(
+        '{ eventLogs(logName: "System") { entries { id } } }'
+      );
+      expect(result).toBeNull();
+    });
+  });
 });
